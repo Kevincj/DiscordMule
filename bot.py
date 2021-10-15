@@ -4,6 +4,7 @@ import json
 import tweepy
 import discord
 import logging
+import configparser
 from kaomoji import kaomoji
 from discord.ext import commands
 
@@ -11,53 +12,66 @@ from discord.ext import commands
 # Initialize Discord bot
 bot = commands.Bot(command_prefix = '-', case_insensitive = True)
 
-def loadKaomoji():
-	''' Load Kaomoji '''
-	global kao
 
-	logging.info("Setting up Kaomoji...")
-	kao = kaomoji.Kaomoji()
-	logging.info("Kaomoji ready: %s" % kao())
+def saveConfig() -> None:
+	global config, config_file
 
-def saveConfig():
-	global config
 	logging.info("Saving configuration...")
 
-	try:
-		with open("bot.conf", "w") as f:
-			json.dump(config, f)
-		logging.info("Configuration saved successfullly.")
-	except:
-		logging.info("Error while saving configuration.")
+	with open('example.ini', 'w') as config_file:
+		config.write(config_file)
 
 
-def loadTwitter():
+def loadConfig(file_name:str = "bot.conf") -> None:
+
+	global config, config_file
+
+	config_file = file_name
+
+	logging.info("Loading configuration...")
+
+	config = configparser.ConfigParser()
+	config.read('bot.conf')
+
+	print(config.sections())
+
+
+	
+def loadKaomoji() -> None:
+
+	global kao
+
+	logging.info("Loading Kaomoji...")
+	kao = kaomoji.Kaomoji()
+
+
+def loadTwitter() -> None:
 	global config, api
 
 	api = None
 
 	logging.info("Setting up Twitter access...")
-	if 'twi_access_token' in config.keys():
-		auth = tweepy.OAuthHandler(config['twi_api_key'], config['twi_api_secret'])
-		auth.set_access_token(config['twi_access_token'], config['twi_access_secret'])
+	if 'AccessToken' in config['Twitter']:
+		auth = tweepy.OAuthHandler(config['Twitter']['APIKey'], config['Twitter']['APISecret'])
+		auth.set_access_token(config['Twitter']['AccessToken'], config['Twitter']['AccessSecret'])
 		api = tweepy.API(auth)
 
-	else:
-		logging.info("Access token invalid, refetching...")
+	if not api:
+		logging.info("Fetching access token and secret...")
 
 		try:
-			auth = tweepy.OAuthHandler(config['twi_api_key'], config['twi_api_secret'])
+			auth = tweepy.OAuthHandler(config['Twitter']['APIKey'], config['Twitter']['APISecret'])
 			redirect_url = auth.get_authorization_url()
 			logging.info("Link: %s" % redirect_url)
 			verifier = input('PIN: ')
-			access_token, access_token_secret = auth.get_access_token(verifier)
+			config['Twitter']['AccessToken'], config['Twitter']['AccessSecret'] = \
+									auth.get_access_token(verifier)
 
-			logging.info("Received access token: %s" %  access_token)
-			logging.info("Received access token: %s" %  access_token_secret)
-			auth.set_access_token(access_token, access_token_secret)
-			config['twi_access_token'], config['twi_access_secret'] = access_token, access_token_secret
+			logging.info("Received access token: %s" %  config['Twitter']['AccessToken'])
+			logging.info("Received access token: %s" %  config['Twitter']['AccessSecret'])
+			auth.set_access_token(config['Twitter']['AccessToken'], config['Twitter']['AccessSecret'])
 
-			saveConfig()
+			saveConfig(config_file)
 			api = tweepy.API(auth)
 
 		except tweepy.TweepyException as error:
@@ -69,12 +83,50 @@ def loadTwitter():
 		logging.error("Failed to connect to Twitter.")
 
 
+def initialize(config_file:str = "bot.conf") -> None:
+
+	logging.basicConfig(level = logging.INFO) #, file='bot.log'
+
+	loadConfig(file_name = config_file)
+	loadKaomoji()
+	loadTwitter()
+
+def deployBot() -> None:
+	global bot, config
+	# Load Discord bot
+	logging.info("Connecting to discord, token: %s" % config['Discord']['Token'])
+	bot.run(config['Discord']['Token'])
+
+
+
+
+
+""" 
+	Events:
+
+"""
+
 @bot.event
-async def on_ready():
+async def on_ready() -> None:
 	logging.info("Logged in as %s [%s]" % (bot.user.id, bot.user))
 
+
+@bot.event
+async def on_message(message: discord.Message) -> None:
+	if message.author != bot.user:
+		logging.info("Received from %s: %s" % (message.author, message.content))
+	await bot.process_commands(message)
+
+
+
+
+""" 
+	Commands:
+		-hi 	:Respond with a kaomoji
+
+"""
 @bot.command()
-async def hi(ctx):
+async def hi(ctx: commands.Context) -> None:
 	'''Respond with a kaomoji'''
 	global kao
 	logging.info("Reacting with a random kaomoji...")
@@ -82,43 +134,24 @@ async def hi(ctx):
 	await ctx.message.delete()
 	await ctx.send(kao())
 
-@bot.event
-async def on_message(message):
-
-  await bot.process_commands(message)
 
 
-def loadConfiguration():
-	global config
-	config = None
-
-	logging.info("Load configuration...")
-	try:
-		with open("bot.conf", "r") as f:
-			config = json.load(f)
-	except:
-		logging.error("Unable to load \'bot.conf\'.")
-		return
-
-	if config:
-		logging.info("Loaded config file successfullly")
-		return
-	else:
-		logging.error("\'bot.conf\' is empty.")
-		return
-
-def deployBot():
-	global bot, config
-	# Load Discord bot
-	logging.info("Connecting to discord, token: %s" % config['discord_token'])
-	bot.run(config['discord_token'])
 
 
-logging.basicConfig(level=logging.INFO) #, file='bot.log'
-loadConfiguration()
 
-loadKaomoji()
-loadTwitter()
+""" 
+	Tasks:
+
+"""
+
+
+
+
+
+
+
+
+initialize()
 deployBot()
 
 
