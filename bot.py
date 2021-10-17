@@ -5,12 +5,10 @@ import json
 import tweepy
 import discord
 import logging
-import pyttsx3
-import youtube_dl
 import configparser
 from general import *
+from voice import *
 from discord.ext import commands
-from discord import FFmpegPCMAudio
 
 
 def saveConfig() -> None:
@@ -82,12 +80,7 @@ def loadTwitter() -> None:
 	return api
 
 
-def loadTTS() -> None:
-	global engine
-	engine = pyttsx3.init()
-	engine.setProperty('rate', 145)
-	engine.save_to_file("OK", "tmp.mp3")
-	engine.runAndWait()
+
 
 
 
@@ -111,19 +104,7 @@ def deployBot() -> None:
 
 # """
 
-# @bot.event
-# async def on_ready() -> None:
 
-# 	logging.info("Logged in as %s [%s]" % (bot.user.id, bot.user))
-
-
-# @bot.event
-# async def on_message(message: discord.Message) -> None:
-
-# 	if message.author != bot.user:
-# 		logging.info("Received from %s: %s" % (message.author, message.content))
-
-# 	await bot.process_commands(message)
 
 
 # @bot.event
@@ -198,6 +179,14 @@ def main():
 
 	bot = commands.Bot(command_prefix='-', case_insensitive = True)
 
+	@bot.event
+	async def on_message(message: discord.Message) -> None:
+
+		if message.author != bot.user:
+			logging.info("Received from %s: %s" % (message.author, message.content))
+
+		await bot.process_commands(message)
+
 	logging.basicConfig(level = logging.INFO) #, file='bot.log'
 
 	config = loadConfig(file_name = "bot.conf")
@@ -205,14 +194,13 @@ def main():
 	# loadTwitter()
 	# loadTTS()
 
-	@bot.event
-	async def on_ready():
-		print("Logged in.")
+
 
 	bot.add_cog(General(bot))
+	bot.add_cog(Voice(bot))
 
 
-	
+
 	deployBot()
 
 

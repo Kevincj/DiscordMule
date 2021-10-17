@@ -22,6 +22,12 @@ class General(commands.Cog):
 		await ctx.send(self.kao())
 
 
+	@commands.Cog.listener()
+	async def on_ready(self) -> None:
+
+		logging.info("Logged in as %s [%s]" % (self.bot.user.id, self.bot.user))
+
+
 
 
 
