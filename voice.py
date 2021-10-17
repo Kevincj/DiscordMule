@@ -31,8 +31,8 @@ class Voice(commands.Cog):
 
 		self.engine.setProperty('rate', 145)
 		
-		self.engine.save_to_file("OK", "tmp.mp3")
-		self.engine.runAndWait()
+		# self.engine.save_to_file("OK", "tmp.mp3")
+		# self.engine.runAndWait()
 
 
 
