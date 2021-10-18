@@ -42,9 +42,16 @@ class Voice(commands.Cog):
 		logging.info("Received -join request from %s" % ctx.author)
 
 		if ctx.author.voice:
-			channel = ctx.message.author.voice.channel
-			await channel.connect()
 
+			connected_channels = [vc.channel for vc in self.bot.voice_clients]
+
+			if ctx.author.voice.channel not in connected_channels:
+
+				logging.info("Joining voice channel...")
+				if ctx.voice_client:
+					await ctx.voice_client.disconnect()
+
+				await ctx.author.voice.channel.connect()
 		else:
 			await ctx.say("Please join a voice channel before running this command.")
 
