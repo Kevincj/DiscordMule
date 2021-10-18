@@ -1,9 +1,11 @@
 #!/usr/bin/python3
 
+import re
 import discord
 import logging
 import pyttsx3
 import youtube_dl
+import datetime
 import discord.utils as utils
 from discord.ext import commands
 from youtube_dl import YoutubeDL
@@ -20,10 +22,10 @@ class Voice(commands.Cog):
 		self.ydl = None
 		self.play_states = defaultdict(lambda: {'playing': False, 'queue': [], 'current': None})
 		self.FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
+		self.link_pattern = re.compile("^http:*", re.IGNORECASE)
+		self.q_display_count = 5
 
 		self.loadTTS()
-
-
 		self.loadYDL()
 
 
@@ -47,6 +49,8 @@ class Voice(commands.Cog):
 		# self.engine.save_to_file("OK", "tmp.mp3")
 		# self.engine.runAndWait()
 
+
+
 	def loadYDL(self) -> None:
 
 		logging.info("Loading youtube_dl...")
@@ -56,7 +60,6 @@ class Voice(commands.Cog):
 						# 'noplaylist':'True'
 						}
 		self.ydl = YoutubeDL(YDL_OPTIONS)
-
 
 
 
@@ -96,6 +99,7 @@ class Voice(commands.Cog):
 			await ctx.send("I'm not in any voice channel of this server.")
 
 
+
 	@commands.command(pass_context=True)
 	async def say(self, ctx: commands.Context, *, arg: str):
 		
@@ -114,6 +118,38 @@ class Voice(commands.Cog):
 		self.engine.runAndWait()
 		return voice_client.play(FFmpegPCMAudio("tmp.mp3"))
 
+	@commands.command(pass_context=True)
+	async def q(self, ctx: commands.Context):
+
+		guild, voice_client = ctx.guild, ctx.voice_client
+
+		if not self.play_states[guild.id]['current']:
+			return await ctx.send("Music queue is empty.")
+
+		embed = discord.Embed(
+			title="Showing next %d songs:" % self.q_display_count
+		)
+		embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.avatar_url)
+		embed.add_field(
+			name = "Currently playing",
+			value = self.play_states[guild.id]['current']['title'] if self.play_states[guild.id]['current'] else "None",
+			inline = False
+		)
+		if self.play_states[guild.id]['queue']:
+			embed.add_field(
+				name="Next up",
+				value="\n".join(' - %s' % song_info['title'] for song_info in self.play_states[guild.id]['queue'][:self.q_display_count]),
+				inline=False
+			)
+		else:
+			embed.add_field(
+				name="Next up",
+				value=" - None",
+				inline=False
+			)
+
+		msg = await ctx.send(embed=embed)
+
 
 	@commands.command(pass_context=True)
 	async def p(self, ctx: commands.Context, *, kw: str):
@@ -124,7 +160,10 @@ class Voice(commands.Cog):
 		if not self.inSameVoiceChannel(ctx.author.voice, ctx.voice_client):
 			return await ctx.send("I'm not in your voice channel.")
 
-		song_info = self.getSongInfo(kw)
+		if self.link_pattern.match(kw):
+			song_info = self.getSongFromUrl(kw)
+		else:
+			song_info = self.getSongInfo(kw)
 
 		if not song_info:
 			return await ctx.send("Unable to find the song, please try another keyword.")
@@ -137,30 +176,8 @@ class Voice(commands.Cog):
 			await self.play(ctx)
 
 
-	@commands.command(pass_context=True)
-	async def pause(self, ctx):
-		voice_client = utils.get(self.bot.voice_clients, guild = ctx.guild)
-		if voice_client.is_playing():
-			voice_client.pause()
-		else:
-			await ctx.send("I'm not playing any song.")
 
-	@commands.command(pass_context=True)
-	async def resume(self, ctx):
-		voice_client = utils.get(self.bot.voice_clients, guild = ctx.guild)
-		if voice_client.is_paused():
-			voice_client.resume()
-		else:
-			await ctx.send("Unable to pause the song.")
-
-	@commands.command(pass_context=True)
-	async def stop(self, ctx):
-		voice_client = utils.get(self.bot.voice_clients, guild = ctx.guild)
-		voice_client.stop()
-		del self.play_states[guild.id]
-
-
-	def play_next(self, ctx: commands.Context):
+	async def play_next(self, ctx: commands.Context):
 
 		guild, voice_client = ctx.guild, ctx.voice_client
 
@@ -168,11 +185,14 @@ class Voice(commands.Cog):
 
 			song_info = self.play_states[guild.id]['queue'].pop(0)
 			self.play_states[guild.id]['current'] = song_info
+			await ctx.send("Now playing: %s" % self.play_states[guild.id]['current']['title'])
 
 			voice_client.play(FFmpegPCMAudio(song_info['url'], **self.FFMPEG_OPTIONS), after = lambda e: self.play_next(ctx))
 
 		else:
 			self.play_states[guild.id]['playing'] = False
+
+
 
 	async def play(self, ctx: commands.Context):
 
@@ -184,11 +204,13 @@ class Voice(commands.Cog):
 
 			song_info = self.play_states[guild.id]['queue'].pop(0)
 			self.play_states[guild.id]['current'] = song_info
+			await ctx.send("Now playing: %s" % self.play_states[guild.id]['current']['title'])
 
 			voice_client.play(FFmpegPCMAudio(song_info['url'], **self.FFMPEG_OPTIONS), after = lambda e: self.play_next(ctx))
 
 		else:
 			await ctx.send("There are no songs in the queue.")
+
 
 
 	@commands.command(pass_context=True)
@@ -204,12 +226,48 @@ class Voice(commands.Cog):
 
 			song_info = self.play_states[guild.id]['queue'].pop(0)
 			self.play_states[guild.id]['current'] = song_info
+			await ctx.send("Now playing: %s" % self.play_states[guild.id]['current']['title'])
 
 			voice_client.play(FFmpegPCMAudio(song_info['url'], **self.FFMPEG_OPTIONS), after = lambda e: self.play_next(ctx))
 
 		else:
 			await ctx.send("There are no songs in the queue.")
 
+
+
+	@commands.command(pass_context=True)
+	async def pause(self, ctx):
+
+		voice_client = utils.get(self.bot.voice_clients, guild = ctx.guild)
+
+		if voice_client.is_playing():
+			voice_client.pause()
+
+		else:
+			await ctx.send("I'm not playing any song.")
+
+
+
+	@commands.command(pass_context=True)
+	async def resume(self, ctx):
+
+		voice_client = utils.get(self.bot.voice_clients, guild = ctx.guild)
+
+		if voice_client.is_paused():
+			voice_client.resume()
+
+		else:
+			await ctx.send("Unable to pause the song.")
+
+
+
+	@commands.command(pass_context=True)
+	async def stop(self, ctx):
+
+		voice_client = utils.get(self.bot.voice_clients, guild = ctx.guild)
+		voice_client.stop()
+
+		del self.play_states[guild.id]
 
 
 
@@ -220,11 +278,22 @@ class Voice(commands.Cog):
 		try:
 			result = self.ydl.extract_info("ytsearch:%s" % keyword, download=False)['entries'][0]
 			return {'title': result['title'], 'url': result['formats'][0]['url']}
+
 		except Exception:
 			return None
 
 
 
+	def getSongFromUrl(self, url: str) -> dict:
+
+		if not self.ydl: self.loadYDL()
+
+		try:
+			result = self.ydl.extract_info(url, download=False)
+			return {'title': result['title'], 'url': result['formats'][0]['url']}
+
+		except Exception:
+			return None
 
 
 
