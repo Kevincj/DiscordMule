@@ -4,6 +4,7 @@ import discord
 import logging
 import pyttsx3
 import youtube_dl
+from discord.utils import get
 from discord.ext import commands
 from discord import FFmpegPCMAudio
 
@@ -43,15 +44,17 @@ class Voice(commands.Cog):
 
 		if ctx.author.voice:
 
-			connected_channels = [vc.channel for vc in self.bot.voice_clients]
+			voice_client = get(ctx.bot.voice_clients, guild = ctx.guild)
+			if voice_client and voice_client.is_connected():
 
-			if ctx.author.voice.channel not in connected_channels:
+				if ctx.author.voice.channel == voice_client.channel: return
 
-				logging.info("Joining voice channel...")
-				if ctx.voice_client:
-					await ctx.voice_client.disconnect()
+				logging.info("Disconnecting current voice channel...")
+				await ctx.voice_client.disconnect()
 
-				await ctx.author.voice.channel.connect()
+			logging.info("Joining voice channel...")
+			await ctx.author.voice.channel.connect()
+
 		else:
 			await ctx.say("Please join a voice channel before running this command.")
 
@@ -61,8 +64,9 @@ class Voice(commands.Cog):
 
 		logging.info("Received -leave request from %s" % ctx.author)
 
-		if ctx.voice_client:
-			await ctx.voice_client.disconnect()
+		voice_client = get(ctx.bot.voice_clients, guild = ctx.guild)
+		if voice_client:
+			await voice_client.disconnect()
 
 		else:
 			await ctx.send("I'm not in any voice channel of this server.")
