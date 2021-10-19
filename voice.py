@@ -1,33 +1,47 @@
 #!/usr/bin/python3
 
 import re
+import time
+import random
+import typing
 import discord
 import logging
 import pyttsx3
-import youtube_dl
+import spotipy
+import asyncio
 import datetime
+import functools
+import youtube_dl
+import configparser
 import discord.utils as utils
 from discord.ext import commands
 from youtube_dl import YoutubeDL
 from discord import FFmpegPCMAudio
 from collections import defaultdict
+from spotipy.oauth2 import SpotifyClientCredentials
+from multiprocessing.pool import ThreadPool
+
+
 
 class Voice(commands.Cog):
 
-	def __init__(self, bot: commands.Bot):
+	def __init__(self, bot: commands.Bot, config: configparser.ConfigParser):
 
 		self.bot = bot
+		self.config = config
 
 		self.playing = False
 		self.ydl = None
 		self.play_states = defaultdict(lambda: {'playing': False, 'queue': [], 'current': None})
 		self.FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
-		self.link_pattern = re.compile("^http:*", re.IGNORECASE)
+		self.link_pattern = re.compile("^http*", re.IGNORECASE)
+		self.spotify_playlist_pattern = re.compile("^http.*//.*spotify.*playlist.*/(.*)", re.IGNORECASE)
+		self.spotify_artist_pattern = re.compile("^http.*//.*spotify.*artist.*/(.*)", re.IGNORECASE)
 		self.q_display_count = 5
 
 		self.loadTTS()
 		self.loadYDL()
-
+		self.loadSpotify()
 
 		
 	def loadTTS(self) -> None:
@@ -62,8 +76,20 @@ class Voice(commands.Cog):
 		self.ydl = YoutubeDL(YDL_OPTIONS)
 
 
+	def loadSpotify(self) -> None:
 
-	@commands.command(pass_context=True)
+		logging.info("Setting up Spotify access...")
+		self.spotify = spotipy.Spotify(auth_manager=SpotifyClientCredentials(client_id=self.config['Spotify']['ClientID'],
+                                                           client_secret=self.config['Spotify']['ClientSecret']))
+
+		if self.spotify:
+			logging.info("Connected to Spotify successfullly.")
+		else:
+			logging.error("Failed to connect to Spotify.")
+
+
+
+	@commands.command(pass_context=True, help="join voice channel")
 	async def join(self, ctx: commands.Context):
 
 		logging.info("Received -join request from %s" % ctx.author)
@@ -85,7 +111,7 @@ class Voice(commands.Cog):
 			
 
 
-	@commands.command(pass_context=True)
+	@commands.command(pass_context=True, help="leave voice channel")
 	async def leave(self, ctx: commands.Context):
 
 		logging.info("Received -leave request from %s" % ctx.author)
@@ -94,13 +120,14 @@ class Voice(commands.Cog):
 
 		if voice_client:
 			await voice_client.disconnect()
+			del self.play_states[guild.id]
 
 		else:
 			await ctx.send("I'm not in any voice channel of this server.")
 
 
 
-	@commands.command(pass_context=True)
+	@commands.command(pass_context=True, help="TTS from bot")
 	async def say(self, ctx: commands.Context, *, arg: str):
 		
 		logging.info("Received -say request from %s: %s" % (ctx.author, arg))
@@ -118,7 +145,7 @@ class Voice(commands.Cog):
 		self.engine.runAndWait()
 		return voice_client.play(FFmpegPCMAudio("tmp.mp3"))
 
-	@commands.command(pass_context=True)
+	@commands.command(pass_context=True, help="show queue")
 	async def q(self, ctx: commands.Context):
 
 		guild, voice_client = ctx.guild, ctx.voice_client
@@ -151,8 +178,18 @@ class Voice(commands.Cog):
 		msg = await ctx.send(embed=embed)
 
 
-	@commands.command(pass_context=True)
+	@commands.command(pass_context=True, help="clear queue")
+	async def clear(self, ctx: commands.Context):
+
+		logging.info("Clearing queue...")
+		self.play_states[ctx.guild.id]['queue'] = []
+
+		await ctx.send("Queue is empty now.")
+
+
+	@commands.command(pass_context=True, help="play songs by keyword/url, spotify playlist/artist link supported")
 	async def p(self, ctx: commands.Context, *, kw: str):
+		print("status:", self.play_states[ctx.guild.id])
 
 		if not ctx.author.voice:
 			return await ctx.say("Please join a voice channel before running this command.")
@@ -160,17 +197,36 @@ class Voice(commands.Cog):
 		if not self.inSameVoiceChannel(ctx.author.voice, ctx.voice_client):
 			return await ctx.send("I'm not in your voice channel.")
 
-		if self.link_pattern.match(kw):
+		if self.spotify_playlist_pattern.search(kw):
+			await ctx.send("Fetching songs from playlist...")
+			result = self.spotify_playlist_pattern.search(kw)
+			song_info = self.getSpotifyList(result.group(1))
+
+		elif self.spotify_artist_pattern.search(kw):
+			await ctx.send("Fetching songs from artist...")
+			result = self.spotify_artist_pattern.search(kw)
+			song_info = self.getSpotifyArtist(result.group(1))
+
+		elif self.link_pattern.match(kw):
 			song_info = self.getSongFromUrl(kw)
+
 		else:
 			song_info = self.getSongInfo(kw)
 
 		if not song_info:
-			return await ctx.send("Unable to find the song, please try another keyword.")
+			return await ctx.send("Unable to find the song/list, please try another keyword.")
 
-		print("Song found: %s", song_info)
-		self.play_states[ctx.guild.id]['queue'].append(song_info)
-		await ctx.send("Added %s to queue" % song_info['title'])
+		if type(song_info) is dict:
+			logging.info("Song found: %s", song_info)
+			self.play_states[ctx.guild.id]['queue'].append(song_info)
+			await ctx.send("Added %s to queue" % song_info['title'])
+
+		else:
+			print("status:", self.play_states[ctx.guild.id])
+			logging.info("Spotify playlist found: %s", result.group(1))
+			self.play_states[ctx.guild.id]['queue'] += song_info
+			await ctx.send("Adding songs in the playlist to queue.")
+
 
 		if not self.play_states[ctx.guild.id]['playing']:
 			await self.play(ctx)
@@ -200,9 +256,13 @@ class Voice(commands.Cog):
 
 		if self.play_states[guild.id]['queue']:
 
+			song_info = self.play_states[guild.id]['queue'].pop(0)
+			if not song_info["url"]:
+				song_info = self.getSongInfo(song_info['title'])
+
 			self.play_states[guild.id]['playing'] = True
 
-			song_info = self.play_states[guild.id]['queue'].pop(0)
+			
 			self.play_states[guild.id]['current'] = song_info
 			await ctx.send("Now playing: %s" % self.play_states[guild.id]['current']['title'])
 
@@ -213,7 +273,7 @@ class Voice(commands.Cog):
 
 
 
-	@commands.command(pass_context=True)
+	@commands.command(pass_context=True, help="next song")
 	async def skip(self, ctx: commands.Context):
 
 		guild, voice_client = ctx.guild, ctx.voice_client
@@ -222,9 +282,13 @@ class Voice(commands.Cog):
 
 		if self.play_states[guild.id]['queue']:
 
-			self.play_states[guild.id]['playing'] = True
 
 			song_info = self.play_states[guild.id]['queue'].pop(0)
+			if not song_info["url"]:
+				song_info = self.getSongInfo(song_info['title'])
+
+			self.play_states[guild.id]['playing'] = True
+
 			self.play_states[guild.id]['current'] = song_info
 			await ctx.send("Now playing: %s" % self.play_states[guild.id]['current']['title'])
 
@@ -235,7 +299,7 @@ class Voice(commands.Cog):
 
 
 
-	@commands.command(pass_context=True)
+	@commands.command(pass_context=True, help="pause")
 	async def pause(self, ctx):
 
 		voice_client = utils.get(self.bot.voice_clients, guild = ctx.guild)
@@ -248,7 +312,7 @@ class Voice(commands.Cog):
 
 
 
-	@commands.command(pass_context=True)
+	@commands.command(pass_context=True, help="resume")
 	async def resume(self, ctx):
 
 		voice_client = utils.get(self.bot.voice_clients, guild = ctx.guild)
@@ -261,13 +325,43 @@ class Voice(commands.Cog):
 
 
 
-	@commands.command(pass_context=True)
+	@commands.command(pass_context=True, help="stop")
 	async def stop(self, ctx):
 
 		voice_client = utils.get(self.bot.voice_clients, guild = ctx.guild)
 		voice_client.stop()
 
-		del self.play_states[guild.id]
+		del self.play_states[ctx.guild.id]
+		print(self.play_states[ctx.guild.id])
+
+
+	def getSpotifyArtist(self, list_id: str) -> list:
+
+		try:
+			results = self.spotify.artist_top_tracks(list_id)
+			song_names = [ "%s - %s" % (item['name'], item['artists'][0]['name']) for item in results['tracks']]
+			random.shuffle(song_names)
+
+			playlist = [{"title": song_name, "url": None} for song_name in song_names]
+
+			return playlist
+
+		except:
+			return None
+
+	def getSpotifyList(self, list_id: str) -> list:
+
+		try:
+			results = self.spotify.playlist(list_id)
+			song_names = [ "%s - %s" % (item['track']['name'], item['track']['artists'][0]['name']) for item in results['tracks']['items']]
+			random.shuffle(song_names)
+
+			playlist = [{"title": song_name, "url": None} for song_name in song_names]
+
+			return playlist
+
+		except:
+			return None
 
 
 

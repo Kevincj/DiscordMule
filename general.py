@@ -2,19 +2,21 @@
 
 import discord
 import logging
+import configparser
 from kaomoji import kaomoji
 from discord.ext import commands
 
 
 class General(commands.Cog):
 
-	def __init__(self, bot: commands.Bot):
+	def __init__(self, bot: commands.Bot, config: configparser.ConfigParser):
 		self.bot = bot
 		self.kao = kaomoji.Kaomoji()
+		self.config = config
 
 
-	@commands.command()
-	async def hi(self, ctx: commands.Context) -> None:
+	@commands.command(pass_context=True, help="show a kaomoji")
+	async def hi(self, ctx: commands.Context):
 
 		logging.info("Reacting with a random kaomoji...")
 
@@ -23,17 +25,6 @@ class General(commands.Cog):
 
 
 	@commands.Cog.listener()
-	async def on_ready(self) -> None:
+	async def on_ready(self):
 
 		logging.info("Logged in as %s [%s]" % (self.bot.user.id, self.bot.user))
-
-
-
-
-
-
-
-
-	
-
-		

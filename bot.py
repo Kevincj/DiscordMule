@@ -11,7 +11,7 @@ from voice import *
 from discord.ext import commands
 
 
-def saveConfig() -> None:
+def saveConfig():
 
 	global config, config_file
 
@@ -21,7 +21,7 @@ def saveConfig() -> None:
 		config.write(f)
 
 
-def loadConfig(file_name:str = "bot.conf") -> None:
+def loadConfig(file_name:str = "bot.conf"):
 
 	global config, config_file
 
@@ -30,8 +30,7 @@ def loadConfig(file_name:str = "bot.conf") -> None:
 	logging.info("Loading configuration...")
 
 	config = configparser.ConfigParser()
-	config.read('bot.conf')
-
+	config.read(file_name)
 	return config
 
 
@@ -40,9 +39,7 @@ def loadConfig(file_name:str = "bot.conf") -> None:
 
 def loadTwitter() -> None:
 
-	global config, api
-
-	api = None
+	global config
 
 	logging.info("Setting up Twitter access...")
 	if 'AccessToken' in config['Twitter']:
@@ -92,7 +89,7 @@ def deployBot() -> None:
 	global bot, config
 
 	# Load Discord bot
-	logging.info("Connecting to discord, token: %s" % config['Discord']['Token'])
+	logging.info("Connecting to discord...")
 	bot.run(config['Discord']['Token'])
 
 
@@ -196,8 +193,8 @@ def main():
 
 
 
-	bot.add_cog(General(bot))
-	bot.add_cog(Voice(bot))
+	bot.add_cog(General(bot, config))
+	bot.add_cog(Voice(bot, config))
 
 
 
