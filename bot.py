@@ -2,12 +2,12 @@
 
 import os
 import json
-import tweepy
 import discord
 import logging
 import configparser
 from general import *
 from voice import *
+from twitter import *
 from discord.ext import commands
 
 
@@ -37,45 +37,6 @@ def loadConfig(file_name:str = "bot.conf"):
 
 
 
-def loadTwitter() -> None:
-
-	global config
-
-	logging.info("Setting up Twitter access...")
-	if 'AccessToken' in config['Twitter']:
-		auth = tweepy.OAuthHandler(config['Twitter']['APIKey'], config['Twitter']['APISecret'])
-		auth.set_access_token(config['Twitter']['AccessToken'], config['Twitter']['AccessSecret'])
-		api = tweepy.API(auth)
-
-	if not api:
-		logging.info("Fetching access token and secret...")
-
-		try:
-			auth = tweepy.OAuthHandler(config['Twitter']['APIKey'], config['Twitter']['APISecret'])
-			redirect_url = auth.get_authorization_url()
-
-			logging.info("Link: %s" % redirect_url)
-			verifier = input('PIN: ')
-
-			config['Twitter']['AccessToken'], config['Twitter']['AccessSecret'] = \
-									auth.get_access_token(verifier)
-			logging.info("Received access token: %s" %  config['Twitter']['AccessToken'])
-			logging.info("Received access token: %s" %  config['Twitter']['AccessSecret'])
-			auth.set_access_token(config['Twitter']['AccessToken'], config['Twitter']['AccessSecret'])
-
-			saveConfig(config_file)
-			api = tweepy.API(auth)
-
-		except tweepy.TweepyException as error:
-			logging.info('Error!')
-
-	if api:
-		logging.info("Connected to Twitter successfullly.")
-	else:
-		logging.error("Failed to connect to Twitter.")
-
-	return api
-
 
 
 
@@ -92,81 +53,10 @@ def deployBot() -> None:
 	logging.info("Connecting to discord...")
 	bot.run(config['Discord']['Token'])
 
+	if bot:
+		logging.info("Connected to discord successfullly.")
 
 
-
-
-# """ 
-# 	Events:
-
-# """
-
-
-
-
-# @bot.event
-# async def on_voice_state_update(member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
-
-# 	pass
-# 	# bot.voice_client
-
-
-# """ 
-# 	Commands:
-# 		-hi 		:Respond with a kaomoji
-# 		-join		:Join your voice channel
-# 		-leave		:Leave the current channel
-# 		-say XXX	:Speak XXX in your voice channel
-# """
-
-
-
-
-
-# @bot.command(pass_context=True)
-# async def join(ctx: commands.Context) -> None:
-
-# 	if ctx.author.voice:
-# 		channel = ctx.message.author.voice.channel
-# 		await channel.connect()
-# 	else:
-# 		await ctx.say("Please join a voice channel before running this command.")
-
-
-# @bot.command(pass_context=True)
-# async def leave(ctx: commands.Context) -> None:
-
-# 	if ctx.voice_client:
-
-# 		await ctx.voice_client.disconnect()
-# 	else:
-# 		await ctx.send("I'm not in any voice channel of this server.")
-
-
-# @bot.command(pass_context=True)
-# async def say(ctx: commands.Context, *, arg) -> None:
-
-# 	global engine
-
-# 	if ctx.author.voice.channel and ctx.voice_client and \
-# 		ctx.author.voice.channel == ctx.voice_client.channel:
-
-# 		engine.save_to_file(" ".join(arg), "tmp.mp3")
-# 		engine.runAndWait()
-# 		source = FFmpegPCMAudio("tmp.mp3")
-# 		player = ctx.voice_client.play(source)
-# 		return
-
-# 	else:
-
-# 		await ctx.send("I'm not in your voice channel.")
-
-
-
-# """ 
-# 	Tasks:
-
-# """
 
 
 
@@ -174,7 +64,7 @@ def deployBot() -> None:
 def main():
 	global bot
 
-	bot = commands.Bot(command_prefix='-', case_insensitive = True)
+	bot = commands.Bot(command_prefix='=', case_insensitive = True)
 
 	@bot.event
 	async def on_message(message: discord.Message) -> None:
@@ -195,6 +85,7 @@ def main():
 
 	bot.add_cog(General(bot, config))
 	bot.add_cog(Voice(bot, config))
+	bot.add_cog(Twitter(bot, config))
 
 
 

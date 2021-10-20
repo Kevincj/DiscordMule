@@ -29,6 +29,9 @@ class Voice(commands.Cog):
 
 		self.bot = bot
 		self.config = config
+		self.engine = None
+		self.spotify = None
+
 
 		self.playing = False
 		self.ydl = None
@@ -95,7 +98,7 @@ class Voice(commands.Cog):
 		logging.info("Received -join request from %s" % ctx.author)
 
 		if not ctx.author.voice:
-			return await ctx.say("Please join a voice channel before running this command.")
+			return await ctx.send("Please join a voice channel before running this command.")
 
 		voice_client = utils.get(ctx.bot.voice_clients, guild = ctx.guild)
 
@@ -120,7 +123,7 @@ class Voice(commands.Cog):
 
 		if voice_client:
 			await voice_client.disconnect()
-			del self.play_states[guild.id]
+			del self.play_states[ctx.guild.id]
 
 		else:
 			await ctx.send("I'm not in any voice channel of this server.")
@@ -192,7 +195,7 @@ class Voice(commands.Cog):
 		print("status:", self.play_states[ctx.guild.id])
 
 		if not ctx.author.voice:
-			return await ctx.say("Please join a voice channel before running this command.")
+			return await ctx.send("Please join a voice channel before running this command.")
 
 		if not self.inSameVoiceChannel(ctx.author.voice, ctx.voice_client):
 			return await ctx.send("I'm not in your voice channel.")
@@ -239,7 +242,12 @@ class Voice(commands.Cog):
 
 		if self.play_states[guild.id]['queue']:
 
+
 			song_info = self.play_states[guild.id]['queue'].pop(0)
+			if not song_info["url"]:
+				song_info = self.getSongInfo(song_info['title'])
+
+			self.play_states[guild.id]['playing'] = True
 			self.play_states[guild.id]['current'] = song_info
 			await ctx.send("Now playing: %s" % self.play_states[guild.id]['current']['title'])
 
@@ -341,6 +349,7 @@ class Voice(commands.Cog):
 			results = self.spotify.artist_top_tracks(list_id)
 			song_names = [ "%s - %s" % (item['name'], item['artists'][0]['name']) for item in results['tracks']]
 			random.shuffle(song_names)
+			# print(song_names[:10])
 
 			playlist = [{"title": song_name, "url": None} for song_name in song_names]
 
