@@ -7,6 +7,7 @@ import logging
 import configparser
 from general import *
 from voice import *
+from role import *
 from twitter import *
 from discord.ext import commands
 
@@ -84,6 +85,7 @@ def main():
 
 
 	bot.add_cog(General(bot, config))
+	bot.add_cog(Role(bot, config))
 	bot.add_cog(Voice(bot, config))
 	bot.add_cog(Twitter(bot, config))
 
