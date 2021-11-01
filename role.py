@@ -12,6 +12,8 @@ class Role(commands.Cog):
 		self.bot = bot
 		self.config = config
 
+
+
 	def split(self, string, splitter = "  "):
 		if splitter not in string:
 			return None
@@ -21,6 +23,7 @@ class Role(commands.Cog):
 			return None
 
 		return split_arr
+
 
 
 	@commands.command(pass_context=True, help="create a role and assign to the user")

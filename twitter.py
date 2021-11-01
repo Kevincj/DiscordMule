@@ -17,6 +17,7 @@ class Twitter(commands.Cog):
 		self.loadTwitter()
 
 
+
 	def loadTwitter(self) -> None:
 
 		logging.info("Setting up Twitter access...")

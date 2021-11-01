@@ -5,10 +5,10 @@ import json
 import discord
 import logging
 import configparser
-from general import *
-from voice import *
 from role import *
+from voice import *
 from twitter import *
+from general import *
 from discord.ext import commands
 
 
@@ -20,6 +20,7 @@ def saveConfig():
 
 	with open(config_file, 'w') as f:
 		config.write(f)
+
 
 
 def loadConfig(file_name:str = "bot.conf"):
@@ -37,15 +38,6 @@ def loadConfig(file_name:str = "bot.conf"):
 
 
 
-
-
-
-
-
-
-
-
-
 def deployBot() -> None:
 
 	global bot, config
@@ -56,8 +48,6 @@ def deployBot() -> None:
 
 	if bot:
 		logging.info("Connected to discord successfullly.")
-
-
 
 
 
@@ -79,8 +69,6 @@ def main():
 
 	config = loadConfig(file_name = "bot.conf")
 
-	# loadTwitter()
-	# loadTTS()
 
 
 

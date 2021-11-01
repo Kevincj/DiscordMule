@@ -46,6 +46,7 @@ class Voice(commands.Cog):
 		self.loadYDL()
 		self.loadSpotify()
 
+
 		
 	def loadTTS(self) -> None:
 
@@ -77,6 +78,7 @@ class Voice(commands.Cog):
 						# 'noplaylist':'True'
 						}
 		self.ydl = YoutubeDL(YDL_OPTIONS)
+
 
 
 	def loadSpotify(self) -> None:
@@ -148,6 +150,8 @@ class Voice(commands.Cog):
 		self.engine.runAndWait()
 		return voice_client.play(FFmpegPCMAudio("tmp.mp3"))
 
+
+
 	@commands.command(pass_context=True, help="show queue")
 	async def q(self, ctx: commands.Context):
 
@@ -181,6 +185,7 @@ class Voice(commands.Cog):
 		msg = await ctx.send(embed=embed)
 
 
+
 	@commands.command(pass_context=True, help="clear queue")
 	async def clear(self, ctx: commands.Context):
 
@@ -188,6 +193,7 @@ class Voice(commands.Cog):
 		self.play_states[ctx.guild.id]['queue'] = []
 
 		await ctx.send("Queue is empty now.")
+
 
 
 	@commands.command(pass_context=True, help="play songs by keyword/url, spotify playlist/artist link supported")
@@ -343,6 +349,7 @@ class Voice(commands.Cog):
 		print(self.play_states[ctx.guild.id])
 
 
+
 	def getSpotifyArtist(self, list_id: str) -> list:
 
 		try:
@@ -357,6 +364,8 @@ class Voice(commands.Cog):
 
 		except:
 			return None
+
+
 
 	def getSpotifyList(self, list_id: str) -> list:
 
