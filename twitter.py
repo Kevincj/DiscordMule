@@ -3,6 +3,7 @@
 import tweepy
 import discord
 import logging
+import pymongo
 import configparser
 from discord.ext import commands
 
@@ -15,7 +16,60 @@ class Twitter(commands.Cog):
 		self.api = None
 
 		self.loadTwitter()
+		self.loadDB()
 
+
+
+	def loadDB(self):
+
+
+		logging.info("Connecting to MongoDB...")
+		dbclient = pymongo.MongoClient("mongodb://localhost:27017/")
+
+		dblist = dbclient.list_database_names()
+		if "discord_mule" not in dblist:
+			self.db = dbclient["discord_mule"]
+		else:
+			self.db = dbclient["discord_mule"]
+
+		existing_col = self.db.list_collection_names()
+		if "guild_info" not in existing_col:
+			guild_info = self.db["guild_info"]
+			guild_info.insert_one({
+				"guild_id": None,
+				"roles": [],
+				"reactable_channels": [],
+				"forwarding_channels": {
+					"img": None,
+					"vid": None
+					}
+				})
+
+		if "media_info" not in existing_col:
+			media_info = self.db["media_info"]
+			media_info.insert_one({
+				"media_url": None,
+				"tweet_id": None
+				})
+
+		if "tweet_info" not in existing_col:
+			tweet_info = self.db["tweet_info"]
+			tweet_info.insert_one({
+				"tweet_id": None,
+				"media_urls": [],
+				"author_id": None,
+				"liked": False,
+				"likes": 0,
+				"retweets": 0,
+				})
+
+		if "user_info" not in existing_col:
+			user_info = self.db["user_info"]
+			user_info.insert_one({
+				"user_id": None,
+				"guild_id": None,
+				"tweet_token": None
+				})
 
 
 	def loadTwitter(self) -> None:
