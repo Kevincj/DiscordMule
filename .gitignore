@@ -4,3 +4,4 @@ __pycache__/
 bot.conf
 activate.bat
 tmp.mp3
+*.bat
