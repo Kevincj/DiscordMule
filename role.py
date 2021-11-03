@@ -27,6 +27,7 @@ class Role(commands.Cog):
 
 
 	@commands.command(pass_context=True, help="create a role and assign to the user")
+	@commands.has_permissions(manage_roles=True)
 	async def roleCreate(self, ctx: commands.Context):
 
 		args = self.split(ctx.message.content)
@@ -58,6 +59,7 @@ class Role(commands.Cog):
 
 
 	@commands.command(pass_context=True, help="assign a role to the user")
+	@commands.has_permissions(manage_roles=True)
 	async def roleAdd(self, ctx: commands.Context):
 		args = self.split(ctx.message.content)
 
