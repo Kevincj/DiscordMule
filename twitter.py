@@ -9,63 +9,34 @@ from collections import defaultdict
 from discord.ext import commands
 
 
+TWEET_TEMPLATE = {
+	"tweet_id": None,
+	"media_urls": [],
+	"author_id": None,
+	"liked": False,
+	"likes": 0,
+	"retweets": 0,
+	"user_id": None,
+	"guild_id": None
+	}
+
+USER_TEMPLATE = {
+	"user_id": None,
+	"guild_id": None,
+	"tweet_token": None
+	}
+
+
 class Twitter(commands.Cog):
 
-	def __init__(self, bot: commands.Bot, config: configparser.ConfigParser):
+	def __init__(self, bot: commands.Bot, config: configparser.ConfigParser, db: pymongo.database.Database):
 		self.bot = bot
 		self.config = config
+		self.db = db
+
 		self.api = None
 		self.binding_auths = defaultdict(lambda: None)
 		self.bounded_auths = defaultdict(lambda: None)
-		self.loadDB()
-
-		# self.loadTwitter()
-
-
-
-	def loadDB(self):
-
-		logging.info("Connecting to MongoDB...")
-		dbclient = pymongo.MongoClient("mongodb://localhost:27017/")
-
-		# Create the database / locate the database
-		self.db = dbclient["discord_mule"]
-
-		existing_col = self.db.list_collection_names()
-
-		guild_info = self.db["guild_info"]	
-		if "guild_info" not in existing_col:
-			guild_info.insert_one({
-				"guild_id": None,
-				"roles": [],
-				"reactable_channels": [],
-				"forwarding_channels": {
-					"img": None,
-					"vid": None
-					}
-				})
-
-		tweet_info = self.db["tweet_info"]
-		if "tweet_info" not in existing_col:
-			tweet_info.insert_one({
-				"tweet_id": None,
-				"media_urls": [],
-				"author_id": None,
-				"liked": False,
-				"likes": 0,
-				"retweets": 0,
-				"user_id": None,
-				"guild_id": None
-				})
-
-		user_info = self.db["user_info"]
-		if "user_info" not in existing_col:
-			user_info.insert_one({
-				"user_id": None,
-				"guild_id": None,
-				"tweet_token": None
-				})
-
 
 
 	@commands.command(pass_context=True, help="request a Twitter connection")

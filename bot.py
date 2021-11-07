@@ -4,12 +4,16 @@ import os
 import json
 import discord
 import logging
+import pymongo
 import configparser
 from role import *
 from voice import *
 from twitter import *
 from general import *
 from discord.ext import commands
+
+
+
 
 
 def saveConfig():
@@ -49,7 +53,29 @@ def deployBot() -> None:
 	if bot:
 		logging.info("Connected to discord successfullly.")
 
+def loadDB() -> pymongo.database.Database:
 
+	logging.info("Connecting to MongoDB...")
+	dbclient = pymongo.MongoClient("mongodb://localhost:27017/")
+
+	# Create the database / locate the database
+	db = dbclient["discord_mule"]
+
+	existing_col = db.list_collection_names()
+
+	guild_info = db["guild_info"]	
+	if "guild_info" not in existing_col:
+		guild_info.insert_one(GUILD_TEMPLATE)
+
+	tweet_info = db["tweet_info"]
+	if "tweet_info" not in existing_col:
+		tweet_info.insert_one(TWEET_TEMPLATE)
+
+	user_info = db["user_info"]
+	if "user_info" not in existing_col:
+		user_info.insert_one(USER_TEMPLATE)
+
+	return db
 
 
 def main():
@@ -69,13 +95,14 @@ def main():
 
 	config = loadConfig(file_name = "bot.conf")
 
+	db = loadDB()
 
 
 
-	bot.add_cog(General(bot, config))
-	bot.add_cog(Role(bot, config))
-	bot.add_cog(Voice(bot, config))
-	bot.add_cog(Twitter(bot, config))
+	bot.add_cog(General(bot, config, db))
+	bot.add_cog(Role(bot, config, db))
+	bot.add_cog(Voice(bot, config, db))
+	bot.add_cog(Twitter(bot, config, db))
 
 
 

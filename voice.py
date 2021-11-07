@@ -4,11 +4,12 @@ import re
 import time
 import random
 import typing
+import asyncio
 import discord
 import logging
+import pymongo
 import pyttsx3
 import spotipy
-import asyncio
 import datetime
 import functools
 import youtube_dl
@@ -25,12 +26,15 @@ from multiprocessing.pool import ThreadPool
 
 class Voice(commands.Cog):
 
-	def __init__(self, bot: commands.Bot, config: configparser.ConfigParser):
+	def __init__(self, bot: commands.Bot, config: configparser.ConfigParser, db: pymongo.database.Database):
 
 		self.bot = bot
 		self.config = config
+		self.db = db
+
 		self.engine = None
 		self.spotify = None
+
 
 
 		self.playing = False
@@ -206,6 +210,7 @@ class Voice(commands.Cog):
 		if not self.inSameVoiceChannel(ctx.author.voice, ctx.voice_client):
 			return await ctx.send("I'm not in your voice channel.")
 
+		# Match link patterns
 		if self.spotify_playlist_pattern.search(kw):
 			await ctx.send("Fetching songs from playlist...")
 			result = self.spotify_playlist_pattern.search(kw)
@@ -222,21 +227,26 @@ class Voice(commands.Cog):
 		else:
 			song_info = self.getSongInfo(kw)
 
+
+		# Invalid request
 		if not song_info:
+
 			return await ctx.send("Unable to find the song/list, please try another keyword.")
 
+		# Playlist
 		if type(song_info) is dict:
 			logging.info("Song found: %s", song_info)
 			self.play_states[ctx.guild.id]['queue'].append(song_info)
 			await ctx.send("Added %s to queue" % song_info['title'])
 
+		# Song
 		else:
 			print("status:", self.play_states[ctx.guild.id])
 			logging.info("Spotify playlist found: %s", result.group(1))
 			self.play_states[ctx.guild.id]['queue'] += song_info
 			await ctx.send("Adding songs in the playlist to queue.")
 
-
+		# Start playing
 		if not self.play_states[ctx.guild.id]['playing']:
 			await self.play(ctx)
 
@@ -356,7 +366,7 @@ class Voice(commands.Cog):
 			results = self.spotify.artist_top_tracks(list_id)
 			song_names = [ "%s - %s" % (item['name'], item['artists'][0]['name']) for item in results['tracks']]
 			random.shuffle(song_names)
-			# print(song_names[:10])
+
 
 			playlist = [{"title": song_name, "url": None} for song_name in song_names]
 
