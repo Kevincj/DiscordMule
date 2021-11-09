@@ -1,30 +1,17 @@
 #!/usr/bin/python3
 
+
 import tweepy
 import discord
 import logging
 import pymongo
 import configparser
+from template import TWEET_TEMPLATE, USER_TEMPLATE
 from collections import defaultdict
 from discord.ext import commands
 
 
-TWEET_TEMPLATE = {
-	"tweet_id": None,
-	"media_urls": [],
-	"author_id": None,
-	"liked": False,
-	"likes": 0,
-	"retweets": 0,
-	"user_id": None,
-	"guild_id": None
-	}
 
-USER_TEMPLATE = {
-	"user_id": None,
-	"guild_id": None,
-	"tweet_token": None
-	}
 
 
 class Twitter(commands.Cog):
@@ -39,19 +26,20 @@ class Twitter(commands.Cog):
 		self.bounded_auths = defaultdict(lambda: None)
 
 
+
 	@commands.command(pass_context=True, help="request a Twitter connection")
 	async def connectTwitter(self, ctx: commands.Context):
 
 		author = ctx.message.author
 
-		query_result = self.db["user_info"].find_one({"user_id": author.id, "guild_id": ctx.guild.id})
+		query_result = self.db["user_info"].find_one({"user_id": str(author.id), "guild_id": str(ctx.guild.id)})
 		if query_result:
-			self.db["user_info"].update_one(query_result[0], {"$set": {"tweet_token": None}})
+			self.db["user_info"].update_one(query_result, {"$set": {"tweet_token": None}})
 
-		auth = tweepy.OAuthHandler(self.config['Twitter']['APIKey'], self.config['Twitter']['APISecret'])
+		auth = tweepy.OAuthHandler(self.config["Twitter"]["APIKey"], self.config["Twitter"]["APISecret"])
 
 		await ctx.send("Please authorize via the following link: %s\n\
-			And use \"=bind your_verifier\" to bind your Twitter account." % auth.get_authorization_url())
+			And use \"=bindTwitter your_verifier\" to bind your Twitter account." % auth.get_authorization_url())
 		self.binding_auths[author.id] = auth
 
 
@@ -65,14 +53,14 @@ class Twitter(commands.Cog):
 			await ctx.send("Please use \"=connectTwitter\" first to request a token before binding.")
 			return
 
-		query_result = self.db["user_info"].find_one({"user_id": author.id, "guild_id": ctx.guild.id})
+		query_result = self.db["user_info"].find_one({"user_id": str(author.id), "guild_id": str(ctx.guild.id)})
 		access_token, access_secret = self.binding_auths[author.id].get_access_token(arg)
 		if not (access_token and access_secret):
 			await ctx.send("Invalid verifier, please try again.")
 			return
 
 		if query_result:
-			self.db["user_info"].update_one(query_result[0], {"$set": {
+			self.db["user_info"].update_one(query_result, {"$set": {
 					"tweet_token": {
 						"access_token": access_token,
 						"access_secret": access_secret
@@ -80,8 +68,8 @@ class Twitter(commands.Cog):
 				}})
 		else:
 			self.db["user_info"].insert_one({
-					"user_id": author.id,
-					"guild_id": ctx.guild.id,
+					"user_id": str(author.id),
+					"guild_id": str(ctx.guild.id),
 					"tweet_token": {
 						"access_token": access_token,
 						"access_secret": access_secret
@@ -97,6 +85,57 @@ class Twitter(commands.Cog):
 
 
 
+	@commands.command(pass_context=True, help="grab medias from your Twitter timeline")
+	async def timeline(self, ctx: commands.Context):
+
+		author = ctx.message.author
+
+		api = None
+
+		query_result = self.db["user_info"].find_one({"user_id": str(author.id), "guild_id": str(ctx.guild.id)})
+		# logging.info("Query result:", query_result["tweet_token"]["access_token"],query_result["tweet_token"]["access_secret"])
+		
+		if query_result:
+			
+			logging.info("Setting up Twitter connection...")
+			auth = tweepy.OAuthHandler(self.config["Twitter"]["APIKey"], self.config["Twitter"]["APISecret"])
+			auth.set_access_token(query_result["tweet_token"]["access_token"], query_result["tweet_token"]["access_secret"])
+			api = tweepy.API(auth)
+			
+		if not api:
+			await ctx.send("Twitter connection failed, please reconnect your Twitter account.")
+			return
+
+		logging.info("Acquiring timeline...")
+		last_id = query_result["timeline_id"]
+		tweets = api.home_timeline(since_id = last_id)
+
+		for tweet in tweets:
+			last_id = tweet.id_str
+			if hasattr(tweet, 'extended_entities'):
+				extended_entities = tweet.extended_entities
+				if "media" in extended_entities.keys():
+					medias = extended_entities["media"]
+					for media in medias:
+						if media['type'] == 'video':
+							video_vars = media['video_info']['variants']
+							best_bitrate = None
+							url = None
+							for var in video_vars:
+								if var['content_type'] == 'video/mp4':
+									if (not best_bitrate) or best_bitrate < var['bitrate']:
+										url = var['url']
+										best_bitrate = var['bitrate']
+							await ctx.send(url)
+						elif media['type'] == 'photo':
+							url = media['media_url']
+							await ctx.send(url)
+
+		logging.info("Updating timeline info to database...%s" % last_id)
+		self.db["user_info"].update_one(query_result, {"$set": {"timeline_id": last_id}
+			})
+
+
 	@commands.command(pass_context=True)
 	async def sayHiFromTwitterCog(self, ctx: commands.Context):
 		await self.bot.get_cog("General").hi(ctx)
@@ -104,32 +143,32 @@ class Twitter(commands.Cog):
 	# def loadTwitter(self) -> None:
 
 	# 	logging.info("Setting up Twitter access...")
-	# 	if 'AccessToken' in self.config['Twitter']:
-	# 		auth = tweepy.OAuthHandler(self.config['Twitter']['APIKey'], self.config['Twitter']['APISecret'])
-	# 		auth.set_access_token(self.config['Twitter']['AccessToken'], self.config['Twitter']['AccessSecret'])
+	# 	if "AccessToken" in self.config["Twitter"]:
+	# 		auth = tweepy.OAuthHandler(self.config["Twitter"]["APIKey"], self.config["Twitter"]["APISecret"])
+	# 		auth.set_access_token(self.config["Twitter"]["AccessToken"], self.config["Twitter"]["AccessSecret"])
 	# 		self.api = tweepy.API(auth)
 
 	# 	if not self.api:
 	# 		logging.info("Fetching access token and secret...")
 
 	# 		try:
-	# 			auth = tweepy.OAuthHandler(self.config['Twitter']['APIKey'], self.config['Twitter']['APISecret'])
+	# 			auth = tweepy.OAuthHandler(self.config["Twitter"]["APIKey"], self.config["Twitter"]["APISecret"])
 	# 			redirect_url = auth.get_authorization_url()
 
 	# 			logging.info("Link: %s" % redirect_url)
-	# 			verifier = input('PIN: ')
+	# 			verifier = input("PIN: ")
 
-	# 			self.config['Twitter']['AccessToken'], self.config['Twitter']['AccessSecret'] = \
+	# 			self.config["Twitter"]["AccessToken"], self.config["Twitter"]["AccessSecret"] = \
 	# 									auth.get_access_token(verifier)
-	# 			logging.info("Received access token: %s" %  self.config['Twitter']['AccessToken'])
-	# 			logging.info("Received access token: %s" %  self.config['Twitter']['AccessSecret'])
-	# 			auth.set_access_token(self.config['Twitter']['AccessToken'], self.config['Twitter']['AccessSecret'])
+	# 			logging.info("Received access token: %s" %  self.config["Twitter"]["AccessToken"])
+	# 			logging.info("Received access token: %s" %  self.config["Twitter"]["AccessSecret"])
+	# 			auth.set_access_token(self.config["Twitter"]["AccessToken"], self.config["Twitter"]["AccessSecret"])
 
 	# 			saveConfig(config_file)
 	# 			self.api = tweepy.API(auth)
 
 	# 		except tweepy.TweepyException as error:
-	# 			logging.info('Error!')
+	# 			logging.info("Error!")
 
 	# 	if self.api:
 	# 		logging.info("Connected to Twitter successfullly.")

@@ -15,7 +15,6 @@ from discord.ext import commands
 
 
 
-
 def saveConfig():
 
 	global config, config_file

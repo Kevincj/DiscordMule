@@ -6,18 +6,10 @@ import discord
 import logging
 import pymongo
 import configparser
+from template import GUILD_TEMPLATE
 from discord.ext import commands
 
-GUILD_TEMPLATE = {
-	"guild_id": None,
-	"roles": {},
-	"role_react_id": None,
-	"reactable_channels": [],
-	"forwarding_channels": {
-		"img": None,
-		"vid": None
-		}
-	}
+
 
 class Role(commands.Cog):
 
