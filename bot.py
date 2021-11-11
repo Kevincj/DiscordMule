@@ -98,9 +98,9 @@ def main():
 
 
 
-	bot.add_cog(General(bot, config, db))
-	bot.add_cog(Role(bot, config, db))
-	bot.add_cog(Voice(bot, config, db))
+	bot.add_cog(General(bot, db))
+	bot.add_cog(Role(bot, db))
+	bot.add_cog(Voice(bot, db))
 	bot.add_cog(Twitter(bot, config, db))
 
 
