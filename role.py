@@ -6,8 +6,8 @@ import discord
 import logging
 import pymongo
 import configparser
-from template import GUILD_TEMPLATE
 from discord.ext import commands
+from template import GUILD_TEMPLATE
 
 
 

@@ -10,8 +10,8 @@ from role import *
 from voice import *
 from twitter import *
 from general import *
+from telegrambot import *
 from discord.ext import commands
-
 
 
 
@@ -100,7 +100,8 @@ def main():
 
 	bot.add_cog(General(bot, db))
 	bot.add_cog(Role(bot, db))
-	bot.add_cog(Voice(bot, db))
+	bot.add_cog(Voice(bot, config, db))
+	bot.add_cog(TelegramBot(bot, config, db))
 	bot.add_cog(Twitter(bot, config, db))
 
 

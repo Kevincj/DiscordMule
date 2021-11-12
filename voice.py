@@ -26,9 +26,10 @@ from spotipy.oauth2 import SpotifyClientCredentials
 
 class Voice(commands.Cog):
 
-	def __init__(self, bot: commands.Bot, db: pymongo.database.Database):
+	def __init__(self, bot: commands.Bot, config: configparser.ConfigParser, db: pymongo.database.Database):
 
 		self.bot = bot
+		self.config = config
 		self.db = db
 
 		self.engine = None
