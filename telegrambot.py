@@ -29,5 +29,5 @@ class TelegramBot(commands.Cog):
 		logging.info("Activating Telegram bot...")
 		for cmd, handler in self.commands.items():
 			self.dispatcher.add_handler(CommandHandler(cmd, handler))
-		self.Updater.start_polling()
+		self.updater.start_polling()
 
