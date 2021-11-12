@@ -6,9 +6,9 @@ import discord
 import logging
 import pymongo
 import configparser
-from template import TWEET_TEMPLATE, USER_TEMPLATE
-from collections import defaultdict
 from discord.ext import commands
+from collections import defaultdict
+from template import TWEET_TEMPLATE, USER_TEMPLATE
 
 
 

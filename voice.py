@@ -19,8 +19,8 @@ from discord.ext import commands
 from youtube_dl import YoutubeDL
 from discord import FFmpegPCMAudio
 from collections import defaultdict
-from spotipy.oauth2 import SpotifyClientCredentials
 from multiprocessing.pool import ThreadPool
+from spotipy.oauth2 import SpotifyClientCredentials
 
 
 
