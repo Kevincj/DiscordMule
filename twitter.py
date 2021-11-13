@@ -112,23 +112,23 @@ class Twitter(commands.Cog):
 
 		for tweet in tweets:
 			last_id = tweet.id_str
-			if hasattr(tweet, 'extended_entities'):
+			if hasattr(tweet, "extended_entities"):
 				extended_entities = tweet.extended_entities
 				if "media" in extended_entities.keys():
 					medias = extended_entities["media"]
 					for media in medias:
-						if media['type'] == 'video':
-							video_vars = media['video_info']['variants']
+						if media["type"] == "video":
+							video_vars = media["video_info"]["variants"]
 							best_bitrate = None
 							url = None
 							for var in video_vars:
-								if var['content_type'] == 'video/mp4':
-									if (not best_bitrate) or best_bitrate < var['bitrate']:
-										url = var['url']
-										best_bitrate = var['bitrate']
+								if var["content_type"] == "video/mp4":
+									if (not best_bitrate) or best_bitrate < var["bitrate"]:
+										url = var["url"]
+										best_bitrate = var["bitrate"]
 							await ctx.send(url)
-						elif media['type'] == 'photo':
-							url = media['media_url']
+						elif media["type"] == "photo":
+							url = media["media_url"]
 							await ctx.send(url)
 
 		logging.info("Updating timeline info to database...%s" % last_id)

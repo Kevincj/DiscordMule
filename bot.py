@@ -21,7 +21,7 @@ def saveConfig():
 
 	logging.info("Saving configuration...")
 
-	with open(config_file, 'w') as f:
+	with open(config_file, "w") as f:
 		config.write(f)
 
 
@@ -47,7 +47,7 @@ def deployBot() -> None:
 
 	# Load Discord bot
 	logging.info("Connecting to discord...")
-	bot.run(config['Discord']['Token'])
+	bot.run(config["Discord"]["Token"])
 
 	if bot:
 		logging.info("Connected to discord successfullly.")
@@ -80,7 +80,7 @@ def loadDB() -> pymongo.database.Database:
 def main():
 	global bot
 
-	bot = commands.Bot(command_prefix='=', case_insensitive = True)
+	bot = commands.Bot(command_prefix="=", case_insensitive = True)
 
 	@bot.event
 	async def on_message(message: discord.Message) -> None:
@@ -90,7 +90,7 @@ def main():
 
 		await bot.process_commands(message)
 
-	logging.basicConfig(level = logging.INFO) #, file='bot.log'
+	logging.basicConfig(level = logging.INFO) #, file="bot.log"
 
 	config = loadConfig(file_name = "bot.conf")
 
@@ -110,7 +110,7 @@ def main():
 
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 	main()
 
 

@@ -39,8 +39,8 @@ class Voice(commands.Cog):
 
 		self.playing = False
 		self.ydl = None
-		self.play_states = defaultdict(lambda: {'playing': False, 'queue': [], 'current': None})
-		self.FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
+		self.play_states = defaultdict(lambda: {"playing": False, "queue": [], "current": None})
+		self.FFMPEG_OPTIONS = {"before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5", "options": "-vn"}
 		self.link_pattern = re.compile("^http*", re.IGNORECASE)
 		self.spotify_playlist_pattern = re.compile("^http.*//.*spotify.*playlist.*/(.*)", re.IGNORECASE)
 		self.spotify_artist_pattern = re.compile("^http.*//.*spotify.*artist.*/(.*)", re.IGNORECASE)
@@ -58,7 +58,7 @@ class Voice(commands.Cog):
 
 		self.engine = pyttsx3.init()
 
-		for voice in self.engine.getProperty('voices'):
+		for voice in self.engine.getProperty("voices"):
 
 			if "zhCN" in voice.id:
 
@@ -66,7 +66,7 @@ class Voice(commands.Cog):
 				self.engine.setProperty("voice", voice.id)
 				break
 
-		self.engine.setProperty('rate', 145)
+		self.engine.setProperty("rate", 145)
 		
 		# self.engine.save_to_file("OK", "tmp.mp3")
 		# self.engine.runAndWait()
@@ -78,8 +78,8 @@ class Voice(commands.Cog):
 		logging.info("Loading youtube_dl...")
 
 		YDL_OPTIONS = {
-						'format': 'bestaudio', 
-						# 'noplaylist':'True'
+						"format": "bestaudio", 
+						# "noplaylist":"True"
 						}
 		self.ydl = YoutubeDL(YDL_OPTIONS)
 
@@ -88,8 +88,8 @@ class Voice(commands.Cog):
 	def loadSpotify(self) -> None:
 
 		logging.info("Setting up Spotify access...")
-		self.spotify = spotipy.Spotify(auth_manager=SpotifyClientCredentials(client_id=self.config['Spotify']['ClientID'],
-                                                           client_secret=self.config['Spotify']['ClientSecret']))
+		self.spotify = spotipy.Spotify(auth_manager=SpotifyClientCredentials(client_id=self.config["Spotify"]["ClientID"],
+                                                           client_secret=self.config["Spotify"]["ClientSecret"]))
 
 		if self.spotify:
 			logging.info("Connected to Spotify successfullly.")
@@ -132,7 +132,7 @@ class Voice(commands.Cog):
 			del self.play_states[ctx.guild.id]
 
 		else:
-			await ctx.send("I'm not in any voice channel of this server.")
+			await ctx.send("I"m not in any voice channel of this server.")
 
 
 
@@ -147,7 +147,7 @@ class Voice(commands.Cog):
 		voice_client = utils.get(ctx.bot.voice_clients, guild = ctx.guild)
 
 		if not self.inSameVoiceChannel(ctx.author.voice, ctx.voice_client):
-			return await ctx.send("I'm not in your voice channel.")
+			return await ctx.send("I"m not in your voice channel.")
 
 
 		self.engine.save_to_file(arg, "tmp.mp3")
@@ -161,7 +161,7 @@ class Voice(commands.Cog):
 
 		guild, voice_client = ctx.guild, ctx.voice_client
 
-		if not self.play_states[guild.id]['current']:
+		if not self.play_states[guild.id]["current"]:
 			return await ctx.send("Music queue is empty.")
 
 		embed = discord.Embed(
@@ -170,13 +170,13 @@ class Voice(commands.Cog):
 		embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.avatar_url)
 		embed.add_field(
 			name = "Currently playing",
-			value = self.play_states[guild.id]['current']['title'] if self.play_states[guild.id]['current'] else "None",
+			value = self.play_states[guild.id]["current"]["title"] if self.play_states[guild.id]["current"] else "None",
 			inline = False
 		)
-		if self.play_states[guild.id]['queue']:
+		if self.play_states[guild.id]["queue"]:
 			embed.add_field(
 				name="Next up",
-				value="\n".join(' - %s' % song_info['title'] for song_info in self.play_states[guild.id]['queue'][:self.q_display_count]),
+				value="\n".join(" - %s" % song_info["title"] for song_info in self.play_states[guild.id]["queue"][:self.q_display_count]),
 				inline=False
 			)
 		else:
@@ -194,7 +194,7 @@ class Voice(commands.Cog):
 	async def clear(self, ctx: commands.Context):
 
 		logging.info("Clearing queue...")
-		self.play_states[ctx.guild.id]['queue'] = []
+		self.play_states[ctx.guild.id]["queue"] = []
 
 		await ctx.send("Queue is empty now.")
 
@@ -208,7 +208,7 @@ class Voice(commands.Cog):
 			return await ctx.send("Please join a voice channel before running this command.")
 
 		if not self.inSameVoiceChannel(ctx.author.voice, ctx.voice_client):
-			return await ctx.send("I'm not in your voice channel.")
+			return await ctx.send("I"m not in your voice channel.")
 
 		# Match link patterns
 		if self.spotify_playlist_pattern.search(kw):
@@ -236,18 +236,18 @@ class Voice(commands.Cog):
 		# Playlist
 		if type(song_info) is dict:
 			logging.info("Song found: %s", song_info)
-			self.play_states[ctx.guild.id]['queue'].append(song_info)
-			await ctx.send("Added %s to queue" % song_info['title'])
+			self.play_states[ctx.guild.id]["queue"].append(song_info)
+			await ctx.send("Added %s to queue" % song_info["title"])
 
 		# Song
 		else:
 			print("status:", self.play_states[ctx.guild.id])
 			logging.info("Spotify playlist found: %s", result.group(1))
-			self.play_states[ctx.guild.id]['queue'] += song_info
+			self.play_states[ctx.guild.id]["queue"] += song_info
 			await ctx.send("Adding songs in the playlist to queue.")
 
 		# Start playing
-		if not self.play_states[ctx.guild.id]['playing']:
+		if not self.play_states[ctx.guild.id]["playing"]:
 			await self.play(ctx)
 
 
@@ -256,21 +256,21 @@ class Voice(commands.Cog):
 
 		guild, voice_client = ctx.guild, ctx.voice_client
 
-		if self.play_states[guild.id]['queue']:
+		if self.play_states[guild.id]["queue"]:
 
 
-			song_info = self.play_states[guild.id]['queue'].pop(0)
+			song_info = self.play_states[guild.id]["queue"].pop(0)
 			if not song_info["url"]:
-				song_info = self.getSongInfo(song_info['title'])
+				song_info = self.getSongInfo(song_info["title"])
 
-			self.play_states[guild.id]['playing'] = True
-			self.play_states[guild.id]['current'] = song_info
-			await ctx.send("Now playing: %s" % self.play_states[guild.id]['current']['title'])
+			self.play_states[guild.id]["playing"] = True
+			self.play_states[guild.id]["current"] = song_info
+			await ctx.send("Now playing: %s" % self.play_states[guild.id]["current"]["title"])
 
-			voice_client.play(FFmpegPCMAudio(song_info['url'], **self.FFMPEG_OPTIONS), after = lambda e: self.play_next(ctx))
+			voice_client.play(FFmpegPCMAudio(song_info["url"], **self.FFMPEG_OPTIONS), after = lambda e: self.play_next(ctx))
 
 		else:
-			self.play_states[guild.id]['playing'] = False
+			self.play_states[guild.id]["playing"] = False
 
 
 
@@ -278,19 +278,19 @@ class Voice(commands.Cog):
 
 		guild, voice_client = ctx.guild, ctx.voice_client
 
-		if self.play_states[guild.id]['queue']:
+		if self.play_states[guild.id]["queue"]:
 
-			song_info = self.play_states[guild.id]['queue'].pop(0)
+			song_info = self.play_states[guild.id]["queue"].pop(0)
 			if not song_info["url"]:
-				song_info = self.getSongInfo(song_info['title'])
+				song_info = self.getSongInfo(song_info["title"])
 
-			self.play_states[guild.id]['playing'] = True
+			self.play_states[guild.id]["playing"] = True
 
 			
-			self.play_states[guild.id]['current'] = song_info
-			await ctx.send("Now playing: %s" % self.play_states[guild.id]['current']['title'])
+			self.play_states[guild.id]["current"] = song_info
+			await ctx.send("Now playing: %s" % self.play_states[guild.id]["current"]["title"])
 
-			voice_client.play(FFmpegPCMAudio(song_info['url'], **self.FFMPEG_OPTIONS), after = lambda e: self.play_next(ctx))
+			voice_client.play(FFmpegPCMAudio(song_info["url"], **self.FFMPEG_OPTIONS), after = lambda e: self.play_next(ctx))
 
 		else:
 			await ctx.send("There are no songs in the queue.")
@@ -304,19 +304,19 @@ class Voice(commands.Cog):
 
 		voice_client.stop()
 
-		if self.play_states[guild.id]['queue']:
+		if self.play_states[guild.id]["queue"]:
 
 
-			song_info = self.play_states[guild.id]['queue'].pop(0)
+			song_info = self.play_states[guild.id]["queue"].pop(0)
 			if not song_info["url"]:
-				song_info = self.getSongInfo(song_info['title'])
+				song_info = self.getSongInfo(song_info["title"])
 
-			self.play_states[guild.id]['playing'] = True
+			self.play_states[guild.id]["playing"] = True
 
-			self.play_states[guild.id]['current'] = song_info
-			await ctx.send("Now playing: %s" % self.play_states[guild.id]['current']['title'])
+			self.play_states[guild.id]["current"] = song_info
+			await ctx.send("Now playing: %s" % self.play_states[guild.id]["current"]["title"])
 
-			voice_client.play(FFmpegPCMAudio(song_info['url'], **self.FFMPEG_OPTIONS), after = lambda e: self.play_next(ctx))
+			voice_client.play(FFmpegPCMAudio(song_info["url"], **self.FFMPEG_OPTIONS), after = lambda e: self.play_next(ctx))
 
 		else:
 			await ctx.send("There are no songs in the queue.")
@@ -332,7 +332,7 @@ class Voice(commands.Cog):
 			voice_client.pause()
 
 		else:
-			await ctx.send("I'm not playing any song.")
+			await ctx.send("I"m not playing any song.")
 
 
 
@@ -364,7 +364,7 @@ class Voice(commands.Cog):
 
 		try:
 			results = self.spotify.artist_top_tracks(list_id)
-			song_names = [ "%s - %s" % (item['name'], item['artists'][0]['name']) for item in results['tracks']]
+			song_names = [ "%s - %s" % (item["name"], item["artists"][0]["name"]) for item in results["tracks"]]
 			random.shuffle(song_names)
 
 
@@ -381,7 +381,7 @@ class Voice(commands.Cog):
 
 		try:
 			results = self.spotify.playlist(list_id)
-			song_names = [ "%s - %s" % (item['track']['name'], item['track']['artists'][0]['name']) for item in results['tracks']['items']]
+			song_names = [ "%s - %s" % (item["track"]["name"], item["track"]["artists"][0]["name"]) for item in results["tracks"]["items"]]
 			random.shuffle(song_names)
 
 			playlist = [{"title": song_name, "url": None} for song_name in song_names]
@@ -398,8 +398,8 @@ class Voice(commands.Cog):
 		if not self.ydl: self.loadYDL()
 
 		try:
-			result = self.ydl.extract_info("ytsearch:%s" % keyword, download=False)['entries'][0]
-			return {'title': result['title'], 'url': result['formats'][0]['url']}
+			result = self.ydl.extract_info("ytsearch:%s" % keyword, download=False)["entries"][0]
+			return {"title": result["title"], "url": result["formats"][0]["url"]}
 
 		except Exception:
 			return None
@@ -412,7 +412,7 @@ class Voice(commands.Cog):
 
 		try:
 			result = self.ydl.extract_info(url, download=False)
-			return {'title': result['title'], 'url': result['formats'][0]['url']}
+			return {"title": result["title"], "url": result["formats"][0]["url"]}
 
 		except Exception:
 			return None

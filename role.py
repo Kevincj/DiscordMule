@@ -25,8 +25,8 @@ class Role(commands.Cog):
 		if splitter not in string:
 			return None
 
-		split_arr = string[string.find('  ')+len(splitter):].split(splitter)
-		if len(split_arr) == 1 and split_arr[0] == '':
+		split_arr = string[string.find("  ")+len(splitter):].split(splitter)
+		if len(split_arr) == 1 and split_arr[0] == "":
 			return None
 
 		return split_arr
@@ -52,7 +52,7 @@ class Role(commands.Cog):
 		# Setting color
 		if len(args) == 2:
 			try:
-				color = discord.Colour.from_rgb([int(v) for v in args[1][1:-1].split(',')])
+				color = discord.Colour.from_rgb([int(v) for v in args[1][1:-1].split(",")])
 			except:
 				await ctx.send("Invalid color. Please specify the role name (and color) separated by **double spaces**. Color should be in the form of \"(r, g, b)\" if you want to specify the color.\nExample: \"roleCreate  role_name\"\n\"roleAdd  role_name  color\"")
 				return
@@ -91,7 +91,7 @@ class Role(commands.Cog):
 	async def roleBind(self, ctx: commands.Context):
 
 		def getEmoji(s):
-			emo = [c for c in s if c in emoji.UNICODE_EMOJI['en']]
+			emo = [c for c in s if c in emoji.UNICODE_EMOJI["en"]]
 			if emo:
 				return emo[0]
 			else:
@@ -141,7 +141,7 @@ class Role(commands.Cog):
 
 		else:
 
-			if role_id in query_result['roles'].keys():
+			if role_id in query_result["roles"].keys():
 				await ctx.send("This role already has its emoji.")
 			else:
 				self.db["guild_info"].update_one(query_result, {"$set": {
@@ -191,8 +191,8 @@ class Role(commands.Cog):
 
 		if query_result:
 
-			if message.id == query_result['role_react_id']:
-				for role_id, e in query_result['roles'].items():
+			if message.id == query_result["role_react_id"]:
+				for role_id, e in query_result["roles"].items():
 					if e == emo:
 						await member.add_roles(discord.utils.get(guild.roles, id=int(role_id)))
 						return
