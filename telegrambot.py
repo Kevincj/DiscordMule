@@ -18,6 +18,8 @@ class TelegramBot(commands.Cog):
 		self.config = config
 		self.db = db
 
+		self.channel = self.config['Telegram']['channel']
+
 		self.updater = Updater(token=self.config['Telegram']['token'], use_context=True)
 		self.dispatcher = self.updater.dispatcher
 		self.commands = {}
@@ -31,3 +33,4 @@ class TelegramBot(commands.Cog):
 			self.dispatcher.add_handler(CommandHandler(cmd, handler))
 		self.updater.start_polling()
 
+	
