@@ -6,10 +6,11 @@ import logging
 import pymongo
 import configparser
 from discord.ext import commands
-from telegram.ext import Updater
+# from telegram.ext import Updater
 from collections import defaultdict
-from telegram.ext import CommandHandler
+# from telegram.ext import CommandHandler
 from template import TWEET_TEMPLATE, USER_TEMPLATE
+from aiogram import Bot, Dispatcher, executor, types
 
 class TelegramBot(commands.Cog):
 
@@ -18,10 +19,10 @@ class TelegramBot(commands.Cog):
 		self.config = config
 		self.db = db
 
-		self.channel = self.config['Telegram']['channel']
+		self.channel = "@" + self.config["Telegram"]["channel"]
 
-		self.updater = Updater(token=self.config['Telegram']['token'], use_context=True)
-		self.dispatcher = self.updater.dispatcher
+		self.tel_bot = Bot(token=self.config["Telegram"]["token"])
+		self.dispatcher = Dispatcher(self.tel_bot)
 		self.commands = {}
 
 
@@ -33,4 +34,6 @@ class TelegramBot(commands.Cog):
 			self.dispatcher.add_handler(CommandHandler(cmd, handler))
 		self.updater.start_polling()
 
-	
+
+	async def send_message(self, content: str):
+		await self.tel_bot.send_message(chat_id=self.channel, text=content)
