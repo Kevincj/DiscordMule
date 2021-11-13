@@ -132,7 +132,7 @@ class Voice(commands.Cog):
 			del self.play_states[ctx.guild.id]
 
 		else:
-			await ctx.send("I"m not in any voice channel of this server.")
+			await ctx.send("I'm not in any voice channel of this server.")
 
 
 
@@ -147,7 +147,7 @@ class Voice(commands.Cog):
 		voice_client = utils.get(ctx.bot.voice_clients, guild = ctx.guild)
 
 		if not self.inSameVoiceChannel(ctx.author.voice, ctx.voice_client):
-			return await ctx.send("I"m not in your voice channel.")
+			return await ctx.send("I'm not in your voice channel.")
 
 
 		self.engine.save_to_file(arg, "tmp.mp3")
@@ -208,7 +208,7 @@ class Voice(commands.Cog):
 			return await ctx.send("Please join a voice channel before running this command.")
 
 		if not self.inSameVoiceChannel(ctx.author.voice, ctx.voice_client):
-			return await ctx.send("I"m not in your voice channel.")
+			return await ctx.send("I'm not in your voice channel.")
 
 		# Match link patterns
 		if self.spotify_playlist_pattern.search(kw):
@@ -332,7 +332,7 @@ class Voice(commands.Cog):
 			voice_client.pause()
 
 		else:
-			await ctx.send("I"m not playing any song.")
+			await ctx.send("I'm not playing any song.")
 
 
 

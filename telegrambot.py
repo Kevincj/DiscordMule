@@ -37,3 +37,9 @@ class TelegramBot(commands.Cog):
 
 	async def send_message(self, content: str):
 		await self.tel_bot.send_message(chat_id=self.channel, text=content)
+
+	async def send_medias(self, medias: list, tweet_info: dict):
+		media_group = types.MediaGroup()
+		for media in media_group:
+			media_group.attach_photo(media, tweet_info['tweet_link'])
+		await bot.send_media_group(chat_id=self.channel, media=media_group)
