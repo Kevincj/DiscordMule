@@ -24,5 +24,6 @@ USER_TEMPLATE = {
 	"user_id": None,
 	"guild_id": None,
 	"tweet_token": None,
-	"timeline_id": None
+	"timeline_id": None,
+	"sync_timeline_id": None
 	}
