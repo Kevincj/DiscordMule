@@ -2,6 +2,7 @@
 
 import re
 import tweepy
+import asyncio
 import discord
 import logging
 import pymongo
@@ -150,27 +151,29 @@ class Twitter(commands.Cog):
 
 			if sync_to_telegram:
 				if self.syncStatus[(str(author.id), str(ctx.guild.id))]:
-					logging.info("Sync to Telegram...")
-
+					# logging.info("Sync to Telegram...")
 
 					await self.bot.get_cog("TelegramBot").sendMedias(ctx, media_list, tweet_link)
-
+				await asyncio.sleep(15)
+				
 		logging.info("Updating timeline info to database...%s" % last_id)
 		if push_to_discord:
 			self.db["user_info"].update_one(query_result, {"$set": {"timeline_id": last_id}})
-		else:
+		if sync_to_telegram:
 			self.db["user_info"].update_one(query_result, {"$set": {"sync_timeline_id": last_id}})
+
+
 
 	@commands.command(pass_context=True, help="grab medias from your Twitter timeline")
 	async def timeline(self, ctx: commands.Context):
 
-		await self.getTimeline(ctx, push_to_discord= True, sync_to_telegram= True)
+		await self.getTimeline(ctx, push_to_discord= True)
 
 
 
-	@tasks.loop(minutes=15.0)
+	@tasks.loop(minutes=15)
 	async def sync(self):
-
+		logging.info("Trigger sync.")
 		for key, value in self.syncStatus.items():
 			if value:
 				await self.getTimeline(self.syncContext[key], sync_to_telegram= True)
@@ -180,17 +183,19 @@ class Twitter(commands.Cog):
 
 	@commands.command(pass_context=True)
 	async def syncToTelegram(self, ctx: commands.Context):
-
 		author = ctx.message.author
 
 		if not self.bot.get_cog("TelegramBot").checkBindingStatus(ctx):
 			await ctx.send("Please bind your Telegram channel first.")
 			return
 
+		logging.info("Toggle sync for %d" % author.id)
 		self.syncStatus[(str(author.id), str(ctx.guild.id))] = True
 
 		self.syncContext[(str(author.id), str(ctx.guild.id))] = ctx
 
+		if not self.sync.is_running():
+			self.sync.start()
 
 
 	@commands.command

@@ -98,9 +98,9 @@ class TelegramBot(commands.Cog):
 		if len(medias) == 1:
 			media, isVideo = medias[0]
 			if isVideo:
-				await self.tel_bot.send_video(chat_id="@"+target_channel, video=media)
+				await self.tel_bot.send_video(chat_id="@"+target_channel, video=media, caption = tweet_link)
 			else:
-				await self.tel_bot.send_photo(chat_id="@"+target_channel, photo=media)
+				await self.tel_bot.send_photo(chat_id="@"+target_channel, photo=media, caption = tweet_link)
 
 			return
 
