@@ -39,7 +39,7 @@ class TelegramBot(commands.Cog):
 
 
 	@commands.command(pass_context=True, help="bind telegram channel")
-	async def bindTelegram(self, ctx: commands.Context):
+	async def bindTelegram(self, ctx: commands.Context, *, arg:str):
 
 		logging.info("Binding Telegram channel...")
 
@@ -89,13 +89,34 @@ class TelegramBot(commands.Cog):
 
 
 
-	async def sendMedias(self, medias: list, tweet_link: str):
+	async def sendMedias(self, ctx: commands.Context, medias: list, tweet_link: str):
+
+		if len(medias) == 0: return
+
+		target_channel = self.checkBindingStatus(ctx)
+
+		if len(medias) == 1:
+			media, isVideo = medias[0]
+			if isVideo:
+				await self.tel_bot.send_video(chat_id="@"+target_channel, video=media)
+			else:
+				await self.tel_bot.send_photo(chat_id="@"+target_channel, photo=media)
+
+			return
+
+
 		media_group = types.MediaGroup()
 
-		for i, media in enumerate(medias):
+		for i, (media, isVideo) in enumerate(medias):
 			if i: 
-				media_group.attach_photo(media)
+				if isVideo:
+					media_group.attach_video(media)
+				else:
+					media_group.attach_photo(media)
 			else:
-				media_group.attach_photo(media, tweet_info['tweet_link'])
+				if isVideo:
+					media_group.attach_video(media, tweet_link)
+				else:
+					media_group.attach_photo(media, tweet_link)
 
 		await self.tel_bot.send_media_group(chat_id="@"+target_channel, media=media_group)
