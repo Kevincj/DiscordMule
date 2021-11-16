@@ -145,6 +145,8 @@ class Twitter(commands.Cog):
 							url = media["media_url"]
 							media_list.append((url, False))
 
+			if len(media_list) == 0: continue
+
 			if push_to_discord:
 				for media in media_list:
 					await ctx.send(media[0])
@@ -177,6 +179,8 @@ class Twitter(commands.Cog):
 		for key, value in self.syncStatus.items():
 			if value:
 				await self.getTimeline(self.syncContext[key], sync_to_telegram= True)
+
+		logging.info("End trigger.")
 
 
 
