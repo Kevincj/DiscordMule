@@ -25,21 +25,77 @@ class TelegramBot(commands.Cog):
 		self.dispatcher = Dispatcher(self.tel_bot)
 		self.commands = {}
 
-
-	@commands.command(pass_context=True, help="activate telegram bot")
-	async def activateTelegram(self, ctx: commands.Context):
-
-		logging.info("Activating Telegram bot...")
-		for cmd, handler in self.commands.items():
-			self.dispatcher.add_handler(CommandHandler(cmd, handler))
-		self.updater.start_polling()
+		self.telegram_cache = {}
 
 
-	async def send_message(self, content: str):
-		await self.tel_bot.send_message(chat_id=self.channel, text=content)
+	# @commands.command(pass_context=True, help="activate telegram bot")
+	# async def activateTelegram(self, ctx: commands.Context):
 
-	async def send_medias(self, medias: list, tweet_info: dict):
+	# 	logging.info("Activating Telegram bot...")
+	# 	for cmd, handler in self.commands.items():
+	# 		self.dispatcher.add_handler(CommandHandler(cmd, handler))
+	# 	self.updater.start_polling()
+
+
+
+	@commands.command(pass_context=True, help="bind telegram channel")
+	async def bindTelegram(self, ctx: commands.Context):
+
+		logging.info("Binding Telegram channel...")
+
+		author = ctx.message.author
+
+
+
+		query_result = self.db["telegram_info"].find_one({"user_id": str(author.id), "guild_id": str(ctx.guild.id)})
+		
+		if query_result:
+			self.db["telegram_info"].update_one(query_result, {"$set": {"channel": arg}})
+
+		else:
+			self.db["telegram_info"].insert_one({
+					"user_id": str(author.id),
+					"guild_id": str(ctx.guild.id),
+					"channel": arg
+				})
+
+		self.telegram_cache[(str(author.id), str(ctx.guild.id))] = arg
+
+
+
+	def checkBindingStatus(self, ctx: commands.Context):
+		author = ctx.message.author
+
+		if (str(author.id), str(ctx.guild.id)) in self.telegram_cache.keys():
+			return self.telegram_cache[(str(author.id), str(ctx.guild.id))]
+
+		else:
+			query_result = self.db["telegram_info"].find_one({"user_id": str(author.id), "guild_id": str(ctx.guild.id)})
+			if not query_result: return None
+			
+			return query_result["channel"]
+
+
+
+	async def sendMessage(self, ctx: commands.Context, content: str):
+
+		target_channel = self.checkBindingStatus(ctx)
+
+		if not target_channel:
+			await ctx.send("No channel found, please bind your Telegram channel.")
+			return
+			
+		await self.tel_bot.send_message(chat_id="@"+target_channel, text=content)
+
+
+
+	async def sendMedias(self, medias: list, tweet_link: str):
 		media_group = types.MediaGroup()
-		for media in media_group:
-			media_group.attach_photo(media, tweet_info['tweet_link'])
-		await bot.send_media_group(chat_id=self.channel, media=media_group)
+
+		for i, media in enumerate(medias):
+			if i: 
+				media_group.attach_photo(media)
+			else:
+				media_group.attach_photo(media, tweet_info['tweet_link'])
+
+		await self.tel_bot.send_media_group(chat_id="@"+target_channel, media=media_group)
