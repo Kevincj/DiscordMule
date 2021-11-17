@@ -2,6 +2,7 @@
 
 import re
 import tweepy
+import aiogram
 import asyncio
 import discord
 import logging
@@ -23,16 +24,19 @@ class Twitter(commands.Cog):
 		self.config = config
 		self.db = db
 
-		self.api = None
+		self.apis = defaultdict(lambda: None)
+
 		self.binding_auths = defaultdict(lambda: None)
 		self.bounded_auths = defaultdict(lambda: None)
-		self.syncStatus = defaultdict(lambda: False)
 
-		self.syncContext = defaultdict(lambda: None)
+		self.sync_tl_context = defaultdict(lambda: None)
+		self.sync_likes_context = defaultdict(lambda: None)
+		self.sync_lists_context = defaultdict(lambda: None)
 
 		self.url_pattern = re.compile("(https?:..t.co.\w+)$")
 
 
+		self.RATE_LIMIT_TL = 15
 
 	@commands.command(pass_context=True, help="request a Twitter connection")
 	async def connectTwitter(self, ctx: commands.Context):
@@ -91,78 +95,122 @@ class Twitter(commands.Cog):
 
 
 
+
+
+	def getAPI(self, author_id, guild_id):
+		if not self.apis[(author_id, guild_id)]:
+
+			query_result = self.db["user_info"].find_one({"user_id": author_id, "guild_id": guild_id})
+			# logging.info("Query result:", query_result["tweet_token"]["access_token"],query_result["tweet_token"]["access_secret"])
+			
+			if query_result:
+				
+				logging.info("Setting up Twitter connection...")
+				auth = tweepy.OAuthHandler(self.config["Twitter"]["APIKey"], self.config["Twitter"]["APISecret"])
+				auth.set_access_token(query_result["tweet_token"]["access_token"], query_result["tweet_token"]["access_secret"])
+				api = tweepy.API(auth)
+
+		else:
+			api = self.apis[(author_id, guild_id)]
+			
+		if api:
+			self.apis[(author_id, guild_id)] = api
+
+		return api
+
+
+
+
 	async def getTimeline(self, ctx: commands.Context, push_to_discord = False, sync_to_telegram = False):
-		author = ctx.message.author
 
-		api = None
+		if not (push_to_discord or sync_to_telegram): return
 
-		query_result = self.db["user_info"].find_one({"user_id": str(author.id), "guild_id": str(ctx.guild.id)})
-		# logging.info("Query result:", query_result["tweet_token"]["access_token"],query_result["tweet_token"]["access_secret"])
-		
-		if query_result:
-			
-			logging.info("Setting up Twitter connection...")
-			auth = tweepy.OAuthHandler(self.config["Twitter"]["APIKey"], self.config["Twitter"]["APISecret"])
-			auth.set_access_token(query_result["tweet_token"]["access_token"], query_result["tweet_token"]["access_secret"])
-			api = tweepy.API(auth)
-			
+		author, guild = ctx.message.author, ctx.guild
+		author_id, guild_id = str(author.id), str(guild.id)
+
+		logging.info("Fetching Twitter connection...")
+		api = self.getAPI(author_id, guild_id)
 		if not api:
 			await ctx.send("Twitter connection failed, please reconnect your Twitter account.")
 			return
 
+
 		logging.info("Acquiring timeline...")
+		query_result = self.db["user_info"].find_one({"user_id": author_id, "guild_id": guild_id})
 		if push_to_discord:
 			last_id = query_result["timeline_id"]
 		else:
 			last_id = query_result["sync_timeline_id"]
-		tweets = api.home_timeline(since_id = last_id)
+		
 
-		for tweet in tweets:
+		for query_count in range(self.RATE_LIMIT_TL - 1):
 
-			re_result = self.url_pattern.search(tweet.text)
-			if not re_result:
-				continue
-			
-			tweet_link = re_result[1]
-			media_list = []
+	
+			tweets = api.home_timeline(since_id = last_id, count= 200, exclude_replies = True)
 
-			last_id = tweet.id_str
-			if hasattr(tweet, "extended_entities"):
-				extended_entities = tweet.extended_entities
-				if "media" in extended_entities.keys():
-					for media in extended_entities["media"]:
-						if media["type"] == "video":
-							video_vars = media["video_info"]["variants"]
-							best_bitrate = None
-							url = None
-							for var in video_vars:
-								if var["content_type"] == "video/mp4":
-									if (not best_bitrate) or best_bitrate < var["bitrate"]:
-										url = var["url"]
-										best_bitrate = var["bitrate"]
-							media_list.append((url, True))
-						elif media["type"] == "photo":
-							url = media["media_url"]
-							media_list.append((url, False))
 
-			if len(media_list) == 0: continue
+			if len(tweets) == 0: break
+			logging.info("Got %d tweets" % len(tweets))
 
-			if push_to_discord:
-				for media in media_list:
-					await ctx.send(media[0])
 
-			if sync_to_telegram:
-				if self.syncStatus[(str(author.id), str(ctx.guild.id))]:
-					# logging.info("Sync to Telegram...")
+			for tweet in tweets:
 
-					await self.bot.get_cog("TelegramBot").sendMedias(ctx, media_list, tweet_link)
-				await asyncio.sleep(15)
+				re_result = self.url_pattern.search(tweet.text)
+				if not re_result:
+					continue
 				
-		logging.info("Updating timeline info to database...%s" % last_id)
-		if push_to_discord:
-			self.db["user_info"].update_one(query_result, {"$set": {"timeline_id": last_id}})
-		if sync_to_telegram:
-			self.db["user_info"].update_one(query_result, {"$set": {"sync_timeline_id": last_id}})
+				tweet_link = re_result[1]
+				media_list = []
+
+				last_id = tweet.id_str
+				if hasattr(tweet, "extended_entities"):
+					extended_entities = tweet.extended_entities
+					if "media" in extended_entities.keys():
+						for media in extended_entities["media"]:
+							if media["type"] == "video":
+								video_vars = media["video_info"]["variants"]
+								best_bitrate = None
+								url = None
+								for var in video_vars:
+									if var["content_type"] == "video/mp4":
+										if (not best_bitrate) or best_bitrate < var["bitrate"]:
+											url = var["url"]
+											best_bitrate = var["bitrate"]
+								media_list.append((url, True))
+							elif media["type"] == "photo":
+								url = media["media_url"]
+								media_list.append((url, False))
+
+				if len(media_list) == 0: continue
+
+				if push_to_discord:
+					logging.info("Pushing to discord channel...")
+					for media in media_list:
+						await ctx.send(media[0])
+
+				if sync_to_telegram:
+
+					if self.sync_tl_context[(author_id, guild_id)]:
+
+						logging.info("Sync to Telegram... %s" % tweet_link)
+
+						success = False
+						while not success:
+
+							try:
+								await self.bot.get_cog("TelegramBot").sendMedias(ctx, media_list, tweet_link)
+								success = True
+							except aiogram.utils.exceptions.RetryAfter as err:
+								logging.error("Try again in %d seconds" % err.timeout)
+								await asyncio.sleep(err.timeout)
+
+					
+			logging.info("Updating timeline info to database...")
+			logging.info("last_id: %s" % last_id)
+			if push_to_discord:
+				self.db["user_info"].update_one(query_result, {"$set": {"timeline_id": last_id}})
+			if sync_to_telegram:
+				self.db["user_info"].update_one(query_result, {"$set": {"sync_timeline_id": last_id}})
 
 
 
@@ -173,30 +221,32 @@ class Twitter(commands.Cog):
 
 
 
-	@tasks.loop(minutes=15)
+	@tasks.loop(minutes=20)
 	async def sync(self):
-		logging.info("Trigger sync.")
-		for key, value in self.syncStatus.items():
-			if value:
-				await self.getTimeline(self.syncContext[key], sync_to_telegram= True)
 
-		logging.info("End trigger.")
+		logging.info("Sync...")
+		for key, ctx in self.sync_tl_context.items():
+
+			if ctx:
+				await self.getTimeline(ctx, sync_to_telegram= True)
+
+		logging.info("Finished sync.")
 
 
 
 
 	@commands.command(pass_context=True)
 	async def syncToTelegram(self, ctx: commands.Context):
-		author = ctx.message.author
+
+		author, guild = ctx.message.author, ctx.guild
+		author_id, guild_id = str(author.id), str(guild.id)
 
 		if not self.bot.get_cog("TelegramBot").checkBindingStatus(ctx):
 			await ctx.send("Please bind your Telegram channel first.")
 			return
 
 		logging.info("Toggle sync for %d" % author.id)
-		self.syncStatus[(str(author.id), str(ctx.guild.id))] = True
-
-		self.syncContext[(str(author.id), str(ctx.guild.id))] = ctx
+		self.sync_tl_context[(author_id, guild_id)] = ctx
 
 		if not self.sync.is_running():
 			self.sync.start()
