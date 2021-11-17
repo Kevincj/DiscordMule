@@ -121,7 +121,89 @@ class Twitter(commands.Cog):
 
 
 
-	async def getTimeline(self, ctx: commands.Context, push_to_discord = False, sync_to_telegram = False):
+	# def getMembersFromList(self, list_id: str):
+
+
+
+
+
+	# async def getLike(self, ctx: commands.Context, push_to_discord = False: bool, sync_to_telegram = False: bool):
+
+	# 	if not (push_to_discord or sync_to_telegram): return
+
+	# 	author = ctx.message.author
+
+	# 	logging.info("Fetching Twitter connection...")
+	# 	api = self.getAPI(str(author.id), str(ctx.guild.id))
+	# 	if not api:
+	# 		await ctx.send("Twitter connection failed, please reconnect your Twitter account.")
+	# 		return
+
+	# 	logging.info("Acquiring Like list...")
+
+
+
+	# 	if push_to_discord:
+	# 		last_id = query_result["timeline_id"]
+	# 	else:
+	# 		last_id = query_result["sync_timeline_id"]
+	# 	tweets = api.home_timeline(since_id = last_id, count= 50)
+
+	# 	for tweet in tweets:
+
+	# 		re_result = self.url_pattern.search(tweet.text)
+	# 		if not re_result:
+	# 			continue
+			
+	# 		tweet_link = re_result[1]
+	# 		media_list = []
+
+	# 		last_id = tweet.id_str
+	# 		if hasattr(tweet, "extended_entities"):
+	# 			extended_entities = tweet.extended_entities
+	# 			if "media" in extended_entities.keys():
+	# 				for media in extended_entities["media"]:
+	# 					if media["type"] == "video":
+	# 						video_vars = media["video_info"]["variants"]
+	# 						best_bitrate = None
+	# 						url = None
+	# 						for var in video_vars:
+	# 							if var["content_type"] == "video/mp4":
+	# 								if (not best_bitrate) or best_bitrate < var["bitrate"]:
+	# 									url = var["url"]
+	# 									best_bitrate = var["bitrate"]
+	# 						media_list.append((url, True))
+	# 					elif media["type"] == "photo":
+	# 						url = media["media_url"]
+	# 						media_list.append((url, False))
+
+	# 		if len(media_list) == 0: continue
+
+	# 		if push_to_discord:
+	# 			logging.debug("Pushing to discord channel...")
+	# 			for media in media_list:
+	# 				await ctx.send(media[0])
+
+	# 		if sync_to_telegram:
+	# 			logging.debug("Pushing to Telegram channel...")
+	# 			if self.syncStatus[(str(author.id), str(ctx.guild.id))]:
+	# 				logging.debug("Sync to Telegram... %s" % tweet_link)
+
+	# 				try:
+	# 					await self.bot.get_cog("TelegramBot").sendMedias(ctx, media_list, tweet_link)
+	# 				except:
+	# 					pass
+	# 			await asyncio.sleep(30)
+				
+	# 	logging.info("Updating timeline info to database...")
+	# 	logging.debug("last_id: %s" % last_id)
+	# 	if push_to_discord:
+	# 		self.db["user_info"].update_one(query_result, {"$set": {"timeline_id": last_id}})
+	# 	if sync_to_telegram:
+	# 		self.db["user_info"].update_one(query_result, {"$set": {"sync_timeline_id": last_id}})
+
+
+	async def getTimeline(self, ctx: commands.Context, push_to_discord = False, sync_to_telegram = False, reverse = False):
 
 		if not (push_to_discord or sync_to_telegram): return
 
@@ -134,24 +216,30 @@ class Twitter(commands.Cog):
 			await ctx.send("Twitter connection failed, please reconnect your Twitter account.")
 			return
 
-
+		last_id, first_id = None, None
 		logging.info("Acquiring timeline...")
 		query_result = self.db["user_info"].find_one({"user_id": author_id, "guild_id": guild_id})
 		if push_to_discord:
-			last_id = query_result["timeline_id"]
+			last_id = str(int(query_result["max_timeline_id"]))
+			first_id = str(int(query_result["min_timeline_id"]-1))
+
 		else:
-			last_id = query_result["sync_timeline_id"]
+			last_id = str(int(query_result["max_sync_timeline_id"]))
+			first_id = str(int(query_result["min_sync_timeline_id"]-1))
 		
 
 		for query_count in range(self.RATE_LIMIT_TL - 1):
 
-	
-			tweets = api.home_timeline(since_id = last_id, count= 200, exclude_replies = True)
+			if reverse:
+				tweets = api.home_timeline(max_id = first_id, count= 200, exclude_replies = True)
+			else:
+				tweets = api.home_timeline(since_id = last_id, count= 200, exclude_replies = True)
 
 
 			if len(tweets) == 0: break
 			logging.info("Got %d tweets" % len(tweets))
 
+			first_id = tweets[0].id_str
 
 			for tweet in tweets:
 
@@ -160,12 +248,13 @@ class Twitter(commands.Cog):
 					continue
 				
 				tweet_link = re_result[1]
-				media_list = []
+				media_lists = []
 
 				last_id = tweet.id_str
 				if hasattr(tweet, "extended_entities"):
 					extended_entities = tweet.extended_entities
 					if "media" in extended_entities.keys():
+						media_list = []
 						for media in extended_entities["media"]:
 							if media["type"] == "video":
 								video_vars = media["video_info"]["variants"]
@@ -180,13 +269,15 @@ class Twitter(commands.Cog):
 							elif media["type"] == "photo":
 								url = media["media_url"]
 								media_list.append((url, False))
+						if media_list:
+							media_lists.append(media_list)
 
-				if len(media_list) == 0: continue
+				if len(media_lists) == 0: continue
 
 				if push_to_discord:
 					logging.info("Pushing to discord channel...")
-					for media in media_list:
-						await ctx.send(media[0])
+					for media in media_lists:
+						await ctx.send(media[0][0])
 
 				if sync_to_telegram:
 
@@ -195,22 +286,34 @@ class Twitter(commands.Cog):
 						logging.info("Sync to Telegram... %s" % tweet_link)
 
 						success = False
+						# skipped = False
 						while not success:
-
+							logging.info(media_lists)
 							try:
-								await self.bot.get_cog("TelegramBot").sendMedias(ctx, media_list, tweet_link)
+								await self.bot.get_cog("TelegramBot").sendMedias(ctx, media_lists, tweet_link)
 								success = True
 							except aiogram.utils.exceptions.RetryAfter as err:
 								logging.error("Try again in %d seconds" % err.timeout)
 								await asyncio.sleep(err.timeout)
+							# except aiogram.utils.exceptions.BadRequest as err:
+								# logging.error("Bad Request. Skipped.")
+								# logging.error(err)
+								# skpped = True
+
 
 					
 			logging.info("Updating timeline info to database...")
-			logging.info("last_id: %s" % last_id)
-			if push_to_discord:
-				self.db["user_info"].update_one(query_result, {"$set": {"timeline_id": last_id}})
-			if sync_to_telegram:
-				self.db["user_info"].update_one(query_result, {"$set": {"sync_timeline_id": last_id}})
+			if reverse:
+				if push_to_discord:
+					self.db["user_info"].update_one(query_result, {"$set": {"min_timeline_id": first_id}})
+				if sync_to_telegram:
+					self.db["user_info"].update_one(query_result, {"$set": {"min_sync_timeline_id": first_id}})
+			else:
+				if push_to_discord:
+					self.db["user_info"].update_one(query_result, {"$set": {"max_timeline_id": last_id}})
+				if sync_to_telegram:
+					self.db["user_info"].update_one(query_result, {"$set": {"max_sync_timeline_id": last_id}})
+
 
 
 

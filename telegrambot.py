@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 
+import aiogram
 import discord
 import logging
 import pymongo
@@ -96,18 +97,24 @@ class TelegramBot(commands.Cog):
 		target_channel = self.checkBindingStatus(ctx)
 
 		if len(medias) == 1:
-			media, isVideo = medias[0]
-			if isVideo:
-				await self.tel_bot.send_video(chat_id="@"+target_channel, video=media, caption = tweet_link)
-			else:
-				await self.tel_bot.send_photo(chat_id="@"+target_channel, photo=media, caption = tweet_link)
-
+			for j in range(len(medias)-1,-1,-1):
+				media, isVideo = medias[0][j]
+				try:
+					if isVideo:
+						await self.tel_bot.send_video(chat_id="@"+target_channel, video=media, caption = tweet_link)
+					else:
+						await self.tel_bot.send_photo(chat_id="@"+target_channel, photo=media, caption = tweet_link)
+				except aiogram.utils.exceptions.BadRequest as err:
+					logging.error("Bad Request: %s" % media)
+					continue
+				break
 			return
 
 
 		media_group = types.MediaGroup()
 
-		for i, (media, isVideo) in enumerate(medias):
+		for i, media_list in enumerate(medias):
+			media, isVideo = media_list[-1]
 			if i: 
 				if isVideo:
 					media_group.attach_video(media)
@@ -118,5 +125,8 @@ class TelegramBot(commands.Cog):
 					media_group.attach_video(media, tweet_link)
 				else:
 					media_group.attach_photo(media, tweet_link)
-
-		await self.tel_bot.send_media_group(chat_id="@"+target_channel, media=media_group)
+		
+		try:
+			await self.tel_bot.send_media_group(chat_id="@"+target_channel, media=media_group)
+		except aiogram.utils.exceptions.BadRequest as err:
+			logging.error("Bad Request: %s" % medias)
