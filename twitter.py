@@ -220,26 +220,32 @@ class Twitter(commands.Cog):
 		logging.info("Acquiring timeline...")
 		query_result = self.db["user_info"].find_one({"user_id": author_id, "guild_id": guild_id})
 		if push_to_discord:
-			last_id = str(int(query_result["max_timeline_id"]))
-			first_id = str(int(query_result["min_timeline_id"]-1))
+			last_id = query_result["max_timeline_id"]
+			first_id = query_result["min_timeline_id"]-1
 
 		else:
-			last_id = str(int(query_result["max_sync_timeline_id"]))
-			first_id = str(int(query_result["min_sync_timeline_id"]-1))
+			last_id = query_result["max_sync_timeline_id"]
+			first_id = query_result["min_sync_timeline_id"]-1
 		
 
 		for query_count in range(self.RATE_LIMIT_TL - 1):
 
 			if reverse:
-				tweets = api.home_timeline(max_id = first_id, count= 200, exclude_replies = True)
+				if first_id > 0:
+					tweets = api.home_timeline(max_id = first_id, count= 200, exclude_replies = True)
+				else:
+					tweets = api.home_timeline(count= 200, exclude_replies = True)
 			else:
-				tweets = api.home_timeline(since_id = last_id, count= 200, exclude_replies = True)
+				if last_id > 0:
+					tweets = api.home_timeline(since_id = last_id, count= 200, exclude_replies = True)
+				else:
+					tweets = api.home_timeline(count= 200, exclude_replies = True)
 
 
 			if len(tweets) == 0: break
 			logging.info("Got %d tweets" % len(tweets))
 
-			first_id = tweets[0].id_str
+			first_id = tweets[0].id
 
 			for tweet in tweets:
 
@@ -250,7 +256,7 @@ class Twitter(commands.Cog):
 				tweet_link = re_result[1]
 				media_lists = []
 
-				last_id = tweet.id_str
+				last_id = tweet.id
 				if hasattr(tweet, "extended_entities"):
 					extended_entities = tweet.extended_entities
 					if "media" in extended_entities.keys():
@@ -288,10 +294,11 @@ class Twitter(commands.Cog):
 						success = False
 						# skipped = False
 						while not success:
-							logging.info(media_lists)
+							# logging.info(media_lists)
 							try:
 								await self.bot.get_cog("TelegramBot").sendMedias(ctx, media_lists, tweet_link)
 								success = True
+								await asyncio.sleep(1)
 							except aiogram.utils.exceptions.RetryAfter as err:
 								logging.error("Try again in %d seconds" % err.timeout)
 								await asyncio.sleep(err.timeout)
