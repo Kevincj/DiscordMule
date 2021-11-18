@@ -125,84 +125,6 @@ class Twitter(commands.Cog):
 
 
 
-
-
-	# async def getLike(self, ctx: commands.Context, push_to_discord = False: bool, sync_to_telegram = False: bool):
-
-	# 	if not (push_to_discord or sync_to_telegram): return
-
-	# 	author = ctx.message.author
-
-	# 	logging.info("Fetching Twitter connection...")
-	# 	api = self.getAPI(str(author.id), str(ctx.guild.id))
-	# 	if not api:
-	# 		await ctx.send("Twitter connection failed, please reconnect your Twitter account.")
-	# 		return
-
-	# 	logging.info("Acquiring Like list...")
-
-
-
-	# 	if push_to_discord:
-	# 		last_id = query_result["timeline_id"]
-	# 	else:
-	# 		last_id = query_result["sync_timeline_id"]
-	# 	tweets = api.home_timeline(since_id = last_id, count= 50)
-
-	# 	for tweet in tweets:
-
-	# 		re_result = self.url_pattern.search(tweet.text)
-	# 		if not re_result:
-	# 			continue
-			
-	# 		tweet_link = re_result[1]
-	# 		media_list = []
-
-	# 		last_id = tweet.id_str
-	# 		if hasattr(tweet, "extended_entities"):
-	# 			extended_entities = tweet.extended_entities
-	# 			if "media" in extended_entities.keys():
-	# 				for media in extended_entities["media"]:
-	# 					if media["type"] == "video":
-	# 						video_vars = media["video_info"]["variants"]
-	# 						best_bitrate = None
-	# 						url = None
-	# 						for var in video_vars:
-	# 							if var["content_type"] == "video/mp4":
-	# 								if (not best_bitrate) or best_bitrate < var["bitrate"]:
-	# 									url = var["url"]
-	# 									best_bitrate = var["bitrate"]
-	# 						media_list.append((url, True))
-	# 					elif media["type"] == "photo":
-	# 						url = media["media_url"]
-	# 						media_list.append((url, False))
-
-	# 		if len(media_list) == 0: continue
-
-	# 		if push_to_discord:
-	# 			logging.debug("Pushing to discord channel...")
-	# 			for media in media_list:
-	# 				await ctx.send(media[0])
-
-	# 		if sync_to_telegram:
-	# 			logging.debug("Pushing to Telegram channel...")
-	# 			if self.syncStatus[(str(author.id), str(ctx.guild.id))]:
-	# 				logging.debug("Sync to Telegram... %s" % tweet_link)
-
-	# 				try:
-	# 					await self.bot.get_cog("TelegramBot").sendMedias(ctx, media_list, tweet_link)
-	# 				except:
-	# 					pass
-	# 			await asyncio.sleep(30)
-				
-	# 	logging.info("Updating timeline info to database...")
-	# 	logging.debug("last_id: %s" % last_id)
-	# 	if push_to_discord:
-	# 		self.db["user_info"].update_one(query_result, {"$set": {"timeline_id": last_id}})
-	# 	if sync_to_telegram:
-	# 		self.db["user_info"].update_one(query_result, {"$set": {"sync_timeline_id": last_id}})
-
-
 	async def getTimeline(self, ctx: commands.Context, push_to_discord = False, sync_to_telegram = False, reverse = False):
 
 		if not (push_to_discord or sync_to_telegram): return
@@ -254,6 +176,7 @@ class Twitter(commands.Cog):
 					continue
 				
 				tweet_link = re_result[1]
+				screen_name = tweet.user.screen_name
 				media_lists = []
 
 				last_id = tweet.id
@@ -296,7 +219,7 @@ class Twitter(commands.Cog):
 						while not success:
 							# logging.info(media_lists)
 							try:
-								await self.bot.get_cog("TelegramBot").sendMedias(ctx, media_lists, tweet_link)
+								await self.bot.get_cog("TelegramBot").sendMedias(ctx, media_lists, "%s from @%s" % (tweet_link, screen_name), "timeline")
 								success = True
 								await asyncio.sleep(1)
 							except aiogram.utils.exceptions.RetryAfter as err:
@@ -331,7 +254,7 @@ class Twitter(commands.Cog):
 
 
 
-	@tasks.loop(minutes=20)
+	@tasks.loop(minutes=60)
 	async def sync(self):
 
 		logging.info("Sync...")
@@ -344,18 +267,53 @@ class Twitter(commands.Cog):
 
 
 
-
 	@commands.command(pass_context=True)
-	async def syncToTelegram(self, ctx: commands.Context):
+	async def syncLikes(self, ctx: commands.Context):
 
 		author, guild = ctx.message.author, ctx.guild
 		author_id, guild_id = str(author.id), str(guild.id)
 
-		if not self.bot.get_cog("TelegramBot").checkBindingStatus(ctx):
+		if not self.bot.get_cog("TelegramBot").getTelegramChannel(ctx, "like_channel"):
 			await ctx.send("Please bind your Telegram channel first.")
 			return
 
-		logging.info("Toggle sync for %d" % author.id)
+		logging.info("Toggle tl sync for %d" % author.id)
+		self.sync_likes_context[(author_id, guild_id)] = ctx
+
+		if not self.sync.is_running():
+			self.sync.start()
+
+
+
+	@commands.command(pass_context=True)
+	async def syncLists(self, ctx: commands.Context):
+
+		author, guild = ctx.message.author, ctx.guild
+		author_id, guild_id = str(author.id), str(guild.id)
+
+		if not self.bot.get_cog("TelegramBot").getTelegramChannel(ctx, "list_channel"):
+			await ctx.send("Please bind your Telegram channel first.")
+			return
+
+		logging.info("Toggle tl sync for %d" % author.id)
+		self.sync_lists_context[(author_id, guild_id)] = ctx
+
+		if not self.sync.is_running():
+			self.sync.start()
+
+
+
+	@commands.command(pass_context=True)
+	async def syncTimeline(self, ctx: commands.Context):
+
+		author, guild = ctx.message.author, ctx.guild
+		author_id, guild_id = str(author.id), str(guild.id)
+
+		if not self.bot.get_cog("TelegramBot").getTelegramChannel(ctx, "tl_channel"):
+			await ctx.send("Please bind your Telegram channel first.")
+			return
+
+		logging.info("Toggle tl sync for %d" % author.id)
 		self.sync_tl_context[(author_id, guild_id)] = ctx
 
 		if not self.sync.is_running():

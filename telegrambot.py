@@ -2,6 +2,7 @@
 
 
 import aiogram
+import asyncio
 import discord
 import logging
 import pymongo
@@ -40,9 +41,9 @@ class TelegramBot(commands.Cog):
 
 
 	@commands.command(pass_context=True, help="bind telegram channel")
-	async def bindTelegram(self, ctx: commands.Context, *, arg:str):
+	async def bindTimelineTelegram(self, ctx: commands.Context, *, arg:str):
 
-		logging.info("Binding Telegram channel...")
+		logging.info("Binding Telegram timeline channel...")
 
 		author = ctx.message.author
 
@@ -57,15 +58,16 @@ class TelegramBot(commands.Cog):
 			self.db["telegram_info"].insert_one({
 					"user_id": str(author.id),
 					"guild_id": str(ctx.guild.id),
-					"channel": arg
+					"tl_channel": arg
 				})
 
 		self.telegram_cache[(str(author.id), str(ctx.guild.id))] = arg
 
 
 
-	def checkBindingStatus(self, ctx: commands.Context):
+	def getTelegramChannel(self, ctx: commands.Context, channel: str):
 		author = ctx.message.author
+
 
 		if (str(author.id), str(ctx.guild.id)) in self.telegram_cache.keys():
 			return self.telegram_cache[(str(author.id), str(ctx.guild.id))]
@@ -73,8 +75,9 @@ class TelegramBot(commands.Cog):
 		else:
 			query_result = self.db["telegram_info"].find_one({"user_id": str(author.id), "guild_id": str(ctx.guild.id)})
 			if not query_result: return None
-			
-			return query_result["channel"]
+
+			return query_result[channel]
+
 
 
 
@@ -90,22 +93,32 @@ class TelegramBot(commands.Cog):
 
 
 
-	async def sendMedias(self, ctx: commands.Context, medias: list, tweet_link: str):
+	async def sendMedias(self, ctx: commands.Context, medias: list, tweet_info: str, channel_type = None):
 
 		if len(medias) == 0: return
 
-		target_channel = self.checkBindingStatus(ctx)
+		if channel_type == "timeline":
+			target_channel = self.getTelegramChannel(ctx, "tl_channel")
+		elif channel_type == "likes":
+			target_channel = self.getTelegramChannel(ctx, "like_channel")
+		elif channel_type == "lists":
+			target_channel = self.getTelegramChannel(ctx, "list_channel")
+		else:
+			return
 
 		if len(medias) == 1:
 			for j in range(len(medias)-1,-1,-1):
 				media, isVideo = medias[0][j]
 				try:
 					if isVideo:
-						await self.tel_bot.send_video(chat_id="@"+target_channel, video=media, caption = tweet_link)
+						await self.tel_bot.send_video(chat_id="@"+target_channel, video=media, caption = tweet_info)
 					else:
-						await self.tel_bot.send_photo(chat_id="@"+target_channel, photo=media, caption = tweet_link)
+						await self.tel_bot.send_photo(chat_id="@"+target_channel, photo=media, caption = tweet_info)
 				except aiogram.utils.exceptions.BadRequest as err:
 					logging.error("Bad Request: %s" % media)
+					continue
+				except asyncio.TimeoutError:
+					logging.error("Timeout. Passed.")
 					continue
 				break
 			return
@@ -122,11 +135,13 @@ class TelegramBot(commands.Cog):
 					media_group.attach_photo(media)
 			else:
 				if isVideo:
-					media_group.attach_video(media, tweet_link)
+					media_group.attach_video(media, tweet_info)
 				else:
-					media_group.attach_photo(media, tweet_link)
+					media_group.attach_photo(media, tweet_info)
 		
 		try:
 			await self.tel_bot.send_media_group(chat_id="@"+target_channel, media=media_group)
 		except aiogram.utils.exceptions.BadRequest as err:
 			logging.error("Bad Request: %s" % medias)
+		except asyncio.TimeoutError:
+			logging.error("Timeout. Passed.")
