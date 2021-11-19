@@ -29,3 +29,11 @@ USER_TEMPLATE = {
 	"min_timeline_id": -1,
 	"min_sync_timeline_id": -1
 	}
+
+TELEGRAM_TEMPLATE = {
+	"user_id": None,
+	"guild_id": None,
+	"tl_channel": "",
+	"like_channel": "",
+	"list_channel": ""
+	}

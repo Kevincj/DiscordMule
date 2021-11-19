@@ -53,10 +53,13 @@ def deployBot() -> None:
 		logging.info("Connected to discord successfullly.")
 
 def loadDB() -> pymongo.database.Database:
+	global config
 
-	logging.info("Connecting to MongoDB...")
-	dbclient = pymongo.MongoClient("mongodb://localhost:27017/")
+	logging.info("Connecting to MongoDB...", )
+	dbclient = pymongo.MongoClient("mongodb://%s:%s/" % (config["MongoDB"]["ip"], config["MongoDB"]["port"]))
 
+
+	logging.info("Connected.")
 	# Create the database / locate the database
 	db = dbclient["discord_mule"]
 
@@ -73,6 +76,10 @@ def loadDB() -> pymongo.database.Database:
 	user_info = db["user_info"]
 	if "user_info" not in existing_col:
 		user_info.insert_one(USER_TEMPLATE)
+
+	telegram_info = db["telegram_info"]
+	if "telegram_info" not in existing_col:
+		telegram_info.insert_one(TELEGRAM_TEMPLATE)
 
 	return db
 

@@ -254,7 +254,7 @@ class Twitter(commands.Cog):
 
 
 
-	@tasks.loop(minutes=60)
+	@tasks.loop(minutes=120)
 	async def sync(self):
 
 		logging.info("Sync...")
