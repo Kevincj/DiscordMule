@@ -126,7 +126,7 @@ class Twitter(commands.Cog):
 
 
 	async def getTimeline(self, ctx: commands.Context, push_to_discord = False, sync_to_telegram = False, reverse = False):
-
+		tweet_ct = 0
 		if not (push_to_discord or sync_to_telegram): return
 
 		author, guild = ctx.message.author, ctx.guild
@@ -203,6 +203,8 @@ class Twitter(commands.Cog):
 
 				if len(media_lists) == 0: continue
 
+				tweet_ct += 1
+
 				if push_to_discord:
 					logging.info("Pushing to discord channel...")
 					for media in media_lists:
@@ -212,7 +214,7 @@ class Twitter(commands.Cog):
 
 					if self.sync_tl_context[(author_id, guild_id)]:
 
-						logging.info("Sync to Telegram... %s" % tweet_link)
+						# logging.info("Sync to Telegram... %s" % tweet_link)
 
 						success = False
 						# skipped = False
@@ -223,7 +225,7 @@ class Twitter(commands.Cog):
 								success = True
 								await asyncio.sleep(1)
 							except aiogram.utils.exceptions.RetryAfter as err:
-								logging.error("Try again in %d seconds" % err.timeout)
+								logging.error("Finished %5d so far. Try again in %d seconds" % (tweet_ct, err.timeout))
 								await asyncio.sleep(err.timeout)
 							# except aiogram.utils.exceptions.BadRequest as err:
 								# logging.error("Bad Request. Skipped.")
