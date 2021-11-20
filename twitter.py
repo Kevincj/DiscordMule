@@ -11,7 +11,7 @@ import configparser
 from discord.ext import tasks
 from discord.ext import commands
 from collections import defaultdict
-from template import TWEET_TEMPLATE, USER_TEMPLATE
+from template import TWEET_TEMPLATE, TWITTER_TEMPLATE
 
 
 
@@ -29,9 +29,7 @@ class Twitter(commands.Cog):
 		self.binding_auths = defaultdict(lambda: None)
 		self.bounded_auths = defaultdict(lambda: None)
 
-		self.sync_tl_context = defaultdict(lambda: None)
-		self.sync_likes_context = defaultdict(lambda: None)
-		self.sync_lists_context = defaultdict(lambda: None)
+		self.sync_status = defaultdict(lambda: defaultdict(lambda: False))
 
 		self.url_pattern = re.compile("(https?:..t.co.\w+)$")
 
@@ -43,9 +41,9 @@ class Twitter(commands.Cog):
 
 		author = ctx.message.author
 
-		query_result = self.db["user_info"].find_one({"user_id": str(author.id), "guild_id": str(ctx.guild.id)})
+		query_result = self.db["twitter_info"].find_one({"user_id": str(author.id), "guild_id": str(ctx.guild.id)})
 		if query_result:
-			self.db["user_info"].update_one(query_result, {"$set": {"tweet_token": None}})
+			self.db["twitter_info"].update_one(query_result, {"$set": {"tweet_token": None}})
 
 		auth = tweepy.OAuthHandler(self.config["Twitter"]["APIKey"], self.config["Twitter"]["APISecret"])
 
@@ -64,21 +62,21 @@ class Twitter(commands.Cog):
 			await ctx.send("Please use \"=connectTwitter\" first to request a token before binding.")
 			return
 
-		query_result = self.db["user_info"].find_one({"user_id": str(author.id), "guild_id": str(ctx.guild.id)})
+		query_result = self.db["twitter_info"].find_one({"user_id": str(author.id), "guild_id": str(ctx.guild.id)})
 		access_token, access_secret = self.binding_auths[author.id].get_access_token(arg)
 		if not (access_token and access_secret):
 			await ctx.send("Invalid verifier, please try again.")
 			return
 
 		if query_result:
-			self.db["user_info"].update_one(query_result, {"$set": {
+			self.db["twitter_info"].update_one(query_result, {"$set": {
 					"tweet_token": {
 						"access_token": access_token,
 						"access_secret": access_secret
 					}
 				}})
 		else:
-			self.db["user_info"].insert_one({
+			self.db["twitter_info"].insert_one({
 					"user_id": str(author.id),
 					"guild_id": str(ctx.guild.id),
 					"tweet_token": {
@@ -100,7 +98,7 @@ class Twitter(commands.Cog):
 	def getAPI(self, author_id, guild_id):
 		if not self.apis[(author_id, guild_id)]:
 
-			query_result = self.db["user_info"].find_one({"user_id": author_id, "guild_id": guild_id})
+			query_result = self.db["twitter_info"].find_one({"user_id": author_id, "guild_id": guild_id})
 			# logging.info("Query result:", query_result["tweet_token"]["access_token"],query_result["tweet_token"]["access_secret"])
 			
 			if query_result:
@@ -125,43 +123,44 @@ class Twitter(commands.Cog):
 
 
 
-	async def getTimeline(self, ctx: commands.Context, push_to_discord = False, sync_to_telegram = False, reverse = False):
+	async def getTimeline(self, author_id: str, guild_id: str, ctx: commands.Context = None, push_to_discord = False, sync_to_telegram = False, reverse = False):
+		
+		MAX_DISCORD_COUNT, MAX_TELEGRAM_COUNT = 50, 200
+
 		tweet_ct = 0
 		if not (push_to_discord or sync_to_telegram): return
 
-		author, guild = ctx.message.author, ctx.guild
-		author_id, guild_id = str(author.id), str(guild.id)
 
 		logging.info("Fetching Twitter connection...")
 		api = self.getAPI(author_id, guild_id)
 		if not api:
-			await ctx.send("Twitter connection failed, please reconnect your Twitter account.")
+			# await ctx.send("Twitter connection failed, please reconnect your Twitter account.")
 			return
 
 		last_id, first_id = None, None
 		logging.info("Acquiring timeline...")
-		query_result = self.db["user_info"].find_one({"user_id": author_id, "guild_id": guild_id})
+		query_result = self.db["twitter_info"].find_one({"user_id": author_id, "guild_id": guild_id})
 		if push_to_discord:
-			last_id = query_result["max_timeline_id"]
-			first_id = query_result["min_timeline_id"]-1
+			last_id = query_result["timeline_info"]["max_timeline_id"]
+			first_id = query_result["timeline_info"]["min_timeline_id"]-1
 
 		else:
-			last_id = query_result["max_sync_timeline_id"]
-			first_id = query_result["min_sync_timeline_id"]-1
+			last_id = query_result["timeline_info"]["max_sync_timeline_id"]
+			first_id = query_result["timeline_info"]["min_sync_timeline_id"]-1
 		
-
+		max_count = MAX_DISCORD_COUNT if push_to_discord else MAX_TELEGRAM_COUNT
 		for query_count in range(self.RATE_LIMIT_TL - 1):
 
 			if reverse:
 				if first_id > 0:
-					tweets = api.home_timeline(max_id = first_id, count= 200, exclude_replies = True)
+					tweets = api.home_timeline(max_id = first_id, count= max_count, exclude_replies = True)
 				else:
-					tweets = api.home_timeline(count= 200, exclude_replies = True)
+					tweets = api.home_timeline(count= max_count, exclude_replies = True)
 			else:
 				if last_id > 0:
-					tweets = api.home_timeline(since_id = last_id, count= 200, exclude_replies = True)
+					tweets = api.home_timeline(since_id = last_id, count= max_count, exclude_replies = True)
 				else:
-					tweets = api.home_timeline(count= 200, exclude_replies = True)
+					tweets = api.home_timeline(count= max_count, exclude_replies = True)
 
 
 			if len(tweets) == 0: break
@@ -212,7 +211,7 @@ class Twitter(commands.Cog):
 
 				if sync_to_telegram:
 
-					if self.sync_tl_context[(author_id, guild_id)]:
+					if self.sync_status[(author_id, guild_id)]["timeline"]:
 
 						# logging.info("Sync to Telegram... %s" % tweet_link)
 
@@ -221,7 +220,7 @@ class Twitter(commands.Cog):
 						while not success:
 							# logging.info(media_lists)
 							try:
-								await self.bot.get_cog("TelegramBot").sendMedias(ctx, media_lists, "%s from @%s" % (tweet_link, screen_name), "timeline")
+								await self.bot.get_cog("TelegramBot").sendMedias(author_id, guild_id, media_lists, "%s from @%s" % (tweet_link, screen_name), "timeline")
 								success = True
 								await asyncio.sleep(1)
 							except aiogram.utils.exceptions.RetryAfter as err:
@@ -235,17 +234,19 @@ class Twitter(commands.Cog):
 
 					
 			logging.info("Updating timeline info to database...")
+			timeline_info = query_result["timeline_info"]
 			if reverse:
 				if push_to_discord:
-					self.db["user_info"].update_one(query_result, {"$set": {"min_timeline_id": first_id}})
+					timeline_info["min_timeline_id"] = first_id
 				if sync_to_telegram:
-					self.db["user_info"].update_one(query_result, {"$set": {"min_sync_timeline_id": first_id}})
+					timeline_info["min_sync_timeline_id"] = first_id
 			else:
 				if push_to_discord:
-					self.db["user_info"].update_one(query_result, {"$set": {"max_timeline_id": last_id}})
+					timeline_info["max_timeline_id"] = last_id
 				if sync_to_telegram:
-					self.db["user_info"].update_one(query_result, {"$set": {"max_sync_timeline_id": last_id}})
+					timeline_info["max_sync_timeline_id"] = last_id
 
+			self.db["twitter_info"].update_one(query_result, {"$set": timeline_info})
 
 
 
@@ -260,10 +261,12 @@ class Twitter(commands.Cog):
 	async def sync(self):
 
 		logging.info("Sync...")
-		for key, ctx in self.sync_tl_context.items():
-
-			if ctx:
-				await self.getTimeline(ctx, sync_to_telegram= True)
+		# logging.info(self.sync_status)
+		for key, channel_status in self.sync_status.items():
+			# logging.info(channel_status)
+			timeline_status = channel_status["timeline"]
+			if timeline_status:
+				await self.getTimeline(author_id = key[0], guild_id = key[1], sync_to_telegram= True)
 
 		logging.info("Finished sync.")
 
@@ -315,8 +318,9 @@ class Twitter(commands.Cog):
 			await ctx.send("Please bind your Telegram channel first.")
 			return
 
+
 		logging.info("Toggle tl sync for %d" % author.id)
-		self.sync_tl_context[(author_id, guild_id)] = ctx
+		self.sync_status[(author_id, guild_id)]["timeline"] = True
 
 		if not self.sync.is_running():
 			self.sync.start()

@@ -11,7 +11,7 @@ from discord.ext import commands
 # from telegram.ext import Updater
 from collections import defaultdict
 # from telegram.ext import CommandHandler
-from template import TWEET_TEMPLATE, USER_TEMPLATE
+from template import TWEET_TEMPLATE, TWITTER_TEMPLATE
 from aiogram import Bot, Dispatcher, executor, types
 
 class TelegramBot(commands.Cog):
@@ -27,7 +27,25 @@ class TelegramBot(commands.Cog):
 		self.dispatcher = Dispatcher(self.tel_bot)
 		self.commands = {}
 
-		self.telegram_cache = {}
+		self.telegram_cache = defaultdict(lambda : defaultdict(lambda : None))
+
+
+	@commands.Cog.listener() # this is a decorator for events/listeners
+	async def on_ready(self):
+		await self.updateSyncStatus()
+
+
+	async def updateSyncStatus(self):
+		sync_needed = False
+		for entry in self.db["telegram_info"].find({}): 
+			logging.info(entry)
+			if entry["tl_channel"]:
+				self.bot.get_cog("Twitter").sync_status[(entry["user_id"], entry["guild_id"])]["timeline"] = True
+				logging.info(self.bot.get_cog("Twitter").sync_status[(entry["user_id"], entry["guild_id"])])
+				sync_needed = True
+
+		if sync_needed: 
+			await self.bot.get_cog("Twitter").sync()
 
 
 	# @commands.command(pass_context=True, help="activate telegram bot")
@@ -61,48 +79,47 @@ class TelegramBot(commands.Cog):
 					"tl_channel": arg
 				})
 
-		self.telegram_cache[(str(author.id), str(ctx.guild.id))] = arg
+		self.telegram_cache[(str(author.id), str(ctx.guild.id))]["timeline"] = arg
 
 
 
-	def getTelegramChannel(self, ctx: commands.Context, channel: str):
-		author = ctx.message.author
+	def getTelegramChannel(self, author_id: str, guild_id: str, channel_type: str):
 
 
-		if (str(author.id), str(ctx.guild.id)) in self.telegram_cache.keys():
-			return self.telegram_cache[(str(author.id), str(ctx.guild.id))]
+		if (author_id, guild_id) in self.telegram_cache.keys():
+			return self.telegram_cache[(author_id, guild_id)][channel_type]
 
 		else:
-			query_result = self.db["telegram_info"].find_one({"user_id": str(author.id), "guild_id": str(ctx.guild.id)})
+			query_result = self.db["telegram_info"].find_one({"user_id": author_id, "guild_id": guild_id})
 			if not query_result: return None
 
-			return query_result[channel]
+			return query_result[channel_type]
 
 
 
 
-	async def sendMessage(self, ctx: commands.Context, content: str):
+	# async def sendMessage(self, ctx: commands.Context, content: str):
 
-		target_channel = self.checkBindingStatus(ctx)
+	# 	target_channel = self.checkBindingStatus(ctx)
 
-		if not target_channel:
-			await ctx.send("No channel found, please bind your Telegram channel.")
-			return
+	# 	if not target_channel:
+	# 		# await ctx.send("No channel found, please bind your Telegram channel.")
+	# 		return
 			
-		await self.tel_bot.send_message(chat_id="@"+target_channel, text=content)
+	# 	await self.tel_bot.send_message(chat_id="@"+target_channel, text=content)
 
 
 
-	async def sendMedias(self, ctx: commands.Context, medias: list, tweet_info: str, channel_type = None):
+	async def sendMedias(self, author_id: str, guild_id: str, medias: list, tweet_info: str, channel_type = None):
 
 		if len(medias) == 0: return
 
 		if channel_type == "timeline":
-			target_channel = self.getTelegramChannel(ctx, "tl_channel")
+			target_channel = self.getTelegramChannel(author_id, guild_id, "tl_channel")
 		elif channel_type == "likes":
-			target_channel = self.getTelegramChannel(ctx, "like_channel")
+			target_channel = self.getTelegramChannel(author_id, guild_id, "like_channel")
 		elif channel_type == "lists":
-			target_channel = self.getTelegramChannel(ctx, "list_channel")
+			target_channel = self.getTelegramChannel(author_id, guild_id, "list_channel")
 		else:
 			return
 

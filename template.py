@@ -20,7 +20,7 @@ TWEET_TEMPLATE = {
 	"guild_id": None
 	}
 
-USER_TEMPLATE = {
+TWITTER_TEMPLATE = {
 	"user_id": None,
 	"guild_id": None,
 	"tweet_token": None,

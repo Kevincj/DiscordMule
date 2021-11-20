@@ -73,9 +73,9 @@ def loadDB() -> pymongo.database.Database:
 	if "tweet_info" not in existing_col:
 		tweet_info.insert_one(TWEET_TEMPLATE)
 
-	user_info = db["user_info"]
-	if "user_info" not in existing_col:
-		user_info.insert_one(USER_TEMPLATE)
+	twitter_info = db["twitter_info"]
+	if "twitter_info" not in existing_col:
+		twitter_info.insert_one(TWITTER_TEMPLATE)
 
 	telegram_info = db["telegram_info"]
 	if "telegram_info" not in existing_col:
@@ -108,8 +108,8 @@ def main():
 	bot.add_cog(General(bot, db))
 	bot.add_cog(Role(bot, db))
 	bot.add_cog(Voice(bot, config, db))
-	bot.add_cog(TelegramBot(bot, config, db))
 	bot.add_cog(Twitter(bot, config, db))
+	bot.add_cog(TelegramBot(bot, config, db))
 
 
 
