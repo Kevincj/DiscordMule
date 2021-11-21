@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import re
+import copy
 import tweepy
 import aiogram
 import asyncio
@@ -72,20 +73,18 @@ class Twitter(commands.Cog):
 
 		if query_result:
 			self.db["twitter_info"].update_one(query_result, {"$set": {
-					"tweet_token": {
-						"access_token": access_token,
-						"access_secret": access_secret
-					}
+					"tweet_token.access_token": access_token,
+					"tweet_token.access_secret": access_secret
 				}})
 		else:
-			self.db["twitter_info"].insert_one({
-					"user_id": user_id,
-					"guild_id": guild_id,
-					"tweet_token": {
+			entry = copy.deepcopy(TWITTER_TEMPLATE)
+			entry["user_id"] = user_id
+			entry["guild_id"] = guild_id
+			entry["tweet_token"] = {
 						"access_token": access_token,
 						"access_secret": access_secret
 					}
-				})
+			self.db["twitter_info"].insert_one(entry)
 
 		self.binding_auths[author.id].set_access_token(access_token, access_secret)
 		self.bounded_auths[author.id] = tweepy.API(self.binding_auths[author.id])
@@ -146,13 +145,15 @@ class Twitter(commands.Cog):
 		last_id, first_id = None, None
 		logging.info("Acquiring timeline...")
 		query_result = self.queryTwitterInfo(user_id, guild_id, "timeline_info")
+
+		# logging.debug(query_result)
 		if push_to_discord:
-			last_id = query_result["timeline_info"]["max_timeline_id"] if "max_timeline_id" in query_result["timeline_info"].keys() else 0
-			first_id = query_result["timeline_info"]["min_timeline_id"]-1  if "min_timeline_id" in query_result["timeline_info"].keys() else 0
+			last_id = query_result["timeline_info"]["max_id"] if "max_id" in query_result["timeline_info"].keys() else 0
+			first_id = query_result["timeline_info"]["min_id"]-1  if "min_id" in query_result["timeline_info"].keys() else 0
 
 		else:
-			last_id = query_result["timeline_info"]["max_sync_timeline_id"]  if "max_sync_timeline_id" in query_result["timeline_info"].keys() else 0
-			first_id = query_result["timeline_info"]["min_sync_timeline_id"]-1  if "min_sync_timeline_id" in query_result["timeline_info"].keys() else 0
+			last_id = query_result["timeline_info"]["max_sync_id"]  if "max_sync_id" in query_result["timeline_info"].keys() else 0
+			first_id = query_result["timeline_info"]["min_sync_id"]-1  if "min_sync_id" in query_result["timeline_info"].keys() else 0
 		
 		max_count = MAX_DISCORD_COUNT if push_to_discord else MAX_TELEGRAM_COUNT
 
@@ -239,19 +240,20 @@ class Twitter(commands.Cog):
 
 					
 			logging.info("Finished %d tweets. Updating timeline info to database..." % tweet_ct)
-			timeline_info = query_result["timeline_info"]
 			if reverse:
 				if push_to_discord:
-					timeline_info["min_timeline_id"] = first_id
+					self.db["twitter_info"].update_one(query_result, {"$set": {"timeline_info.min_id": first_id}})
 				if sync_to_telegram:
-					timeline_info["min_sync_timeline_id"] = first_id
+					self.db["twitter_info"].update_one(query_result, {"$set": {"timeline_info.min_sync_id": first_id}})
 			else:
 				if push_to_discord:
-					timeline_info["max_timeline_id"] = last_id
+					self.db["twitter_info"].update_one(query_result, {"$set": {"timeline_info.max_id": last_id}})
 				if sync_to_telegram:
-					timeline_info["max_sync_timeline_id"] = last_id
+					self.db["twitter_info"].update_one(query_result, {"$set": {"timeline_info.max_sync_id": last_id}})
 
-			self.db["twitter_info"].update_one(query_result, {"$set": timeline_info})
+			# query_result = self.queryTwitterInfo(user_id, guild_id, "timeline_info")
+			# logging.info(query_result)
+
 
 
 

@@ -30,7 +30,7 @@ class TelegramBot(commands.Cog):
 		self.telegram_cache = defaultdict(lambda : defaultdict(lambda : None))
 
 
-	@commands.Cog.listener() # this is a decorator for events/listeners
+	@commands.Cog.listener() 
 	async def on_ready(self):
 		await self.updateSyncStatus()
 
@@ -70,14 +70,14 @@ class TelegramBot(commands.Cog):
 		query_result = self.db["telegram_info"].find_one({"user_id": str(author.id), "guild_id": str(ctx.guild.id)})
 		
 		if query_result:
-			self.db["telegram_info"].update_one(query_result, {"$set": {"channel": arg}})
+			self.db["telegram_info"].update_one(query_result, {"$set": {"tl_channel": arg}})
 
 		else:
-			self.db["telegram_info"].insert_one({
-					"user_id": str(author.id),
-					"guild_id": str(ctx.guild.id),
-					"tl_channel": arg
-				})
+			entry = copy.deepcopy(TELEGRAM_TEMPLATE)
+			entry["user_id"] = str(author.id)
+			entry["guild_id"] = str(ctx.guild.id)
+			entry["tl_channel"] = arg
+			self.db["telegram_info"].insert_one(entry)
 
 		self.telegram_cache[(str(author.id), str(ctx.guild.id))]["timeline"] = arg
 
@@ -120,6 +120,8 @@ class TelegramBot(commands.Cog):
 			target_channel = self.getTelegramChannel(author_id, guild_id, "like_channel")
 		elif channel_type == "lists":
 			target_channel = self.getTelegramChannel(author_id, guild_id, "list_channel")
+		elif channel_type == "focus":
+			target_channel = self.getTelegramChannel(author_id, guild_id, "focus_channel")
 		else:
 			return
 
@@ -132,10 +134,10 @@ class TelegramBot(commands.Cog):
 					else:
 						await self.tel_bot.send_photo(chat_id="@"+target_channel, photo=media, caption = tweet_info)
 				except aiogram.utils.exceptions.BadRequest as err:
-					logging.error("Bad Request: %s" % media)
+					# logging.error("Bad Request: %s" % media)
 					continue
 				except asyncio.TimeoutError:
-					logging.error("Timeout. Passed.")
+					# logging.error("Timeout. Passed.")
 					continue
 				break
 			return
