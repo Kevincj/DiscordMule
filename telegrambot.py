@@ -38,7 +38,7 @@ class TelegramBot(commands.Cog):
 	async def updateSyncStatus(self):
 		sync_needed = False
 		for entry in self.db["telegram_info"].find({}): 
-			logging.info(entry)
+			# logging.info(entry)
 			if entry["tl_channel"]:
 				self.bot.get_cog("Twitter").sync_status[(entry["user_id"], entry["guild_id"])]["timeline"] = True
 				logging.info(self.bot.get_cog("Twitter").sync_status[(entry["user_id"], entry["guild_id"])])
@@ -144,7 +144,8 @@ class TelegramBot(commands.Cog):
 		media_group = types.MediaGroup()
 
 		for i, media_list in enumerate(medias):
-			media, isVideo = media_list[-1]
+			media, isVideo = media_list[0]
+			# print(media, isVideo)
 			if i: 
 				if isVideo:
 					media_group.attach_video(media)
