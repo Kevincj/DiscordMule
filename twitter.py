@@ -142,38 +142,41 @@ class Twitter(commands.Cog):
 			# await ctx.send("Twitter connection failed, please reconnect your Twitter account.")
 			return
 
-		last_id, first_id = None, None
 		logging.info("Acquiring timeline...")
 		query_result = self.queryTwitterInfo(user_id, guild_id, "timeline_info")
 
-		# logging.debug(query_result)
+		update_max, update_min = False, False
+
 		if push_to_discord:
-			last_id = query_result["timeline_info"]["max_id"] if "max_id" in query_result["timeline_info"].keys() else 0
-			first_id = query_result["timeline_info"]["min_id"]-1  if "min_id" in query_result["timeline_info"].keys() else 0
+			max_id = query_result["timeline_info"]["max_id"] if "max_id" in query_result["timeline_info"].keys() else 0
+			min_id = query_result["timeline_info"]["min_id"]  if "min_id" in query_result["timeline_info"].keys() else 0
 
 		else:
-			last_id = query_result["timeline_info"]["max_sync_id"]  if "max_sync_id" in query_result["timeline_info"].keys() else 0
-			first_id = query_result["timeline_info"]["min_sync_id"]-1  if "min_sync_id" in query_result["timeline_info"].keys() else 0
+			max_id = query_result["timeline_info"]["max_sync_id"]  if "max_sync_id" in query_result["timeline_info"].keys() else 0
+			min_id = query_result["timeline_info"]["min_sync_id"]  if "min_sync_id" in query_result["timeline_info"].keys() else 0
 		
 		max_count = MAX_DISCORD_COUNT if push_to_discord else MAX_TELEGRAM_COUNT
 
+
 		while True:
 
-			if reverse:
-				if first_id > 0:
-					tweets = api.home_timeline(max_id = first_id, count= max_count, exclude_replies = True)
-				else:
-					tweets = api.home_timeline(count= max_count, exclude_replies = True)
+			if reverse and min_id > 0:
+				tweets = api.home_timeline(max_id = min_id - 1, count= max_count, exclude_replies = True)
+				update_min = True
+			elif (not reverse) and max_id > 0:
+				tweets = api.home_timeline(since_id = max_id, count= max_count, exclude_replies = True)
+				update_max = True
 			else:
-				if last_id > 0:
-					tweets = api.home_timeline(since_id = last_id, count= max_count, exclude_replies = True)
-				else:
-					tweets = api.home_timeline(count= max_count, exclude_replies = True)
+				reverse, update_min = True, True
+				tweets = api.home_timeline(count= max_count, exclude_replies = True)
+				if len(tweets) > 0: 
+					query_result = self.queryTwitterInfo(user_id, guild_id, "timeline_info")
+					self.db["twitter_info"].update_one(query_result, {"$set": {"timeline_info.max_sync_id": tweets[0].id}})
 
 			if len(tweets) == 0: break
-			logging.info("Got %d tweets" % len(tweets))
+			logging.info("Fetched %d tweets" % len(tweets))
 
-			first_id = tweets[0].id
+			max_id = tweets[0].id
 			for tweet in tweets:
 
 				re_result = self.url_pattern.search(tweet.text)
@@ -184,8 +187,7 @@ class Twitter(commands.Cog):
 				screen_name = tweet.user.screen_name
 
 
-				last_id = tweet.id
-				# print(first_id, last_id)
+				min_id = tweet.id
 
 				media_list = []
 				if hasattr(tweet, "extended_entities"):
@@ -230,7 +232,7 @@ class Twitter(commands.Cog):
 								tweet_ct += 1
 								await asyncio.sleep(1)
 							except aiogram.utils.exceptions.RetryAfter as err:
-								# logging.error("Reached limit while processing %5d... Try again in %d seconds" % (tweet_ct, err.timeout))
+								logging.error("Reached limit while processing %5d... Try again in %d seconds" % (tweet_ct, err.timeout))
 								await asyncio.sleep(err.timeout)
 							# except aiogram.utils.exceptions.BadRequest as err:
 								# logging.error("Bad Request. Skipped.")
@@ -240,16 +242,19 @@ class Twitter(commands.Cog):
 
 					
 			logging.info("Finished %d tweets. Updating timeline info to database..." % tweet_ct)
-			if reverse:
-				if push_to_discord:
-					self.db["twitter_info"].update_one(query_result, {"$set": {"timeline_info.min_id": first_id}})
-				if sync_to_telegram:
-					self.db["twitter_info"].update_one(query_result, {"$set": {"timeline_info.min_sync_id": first_id}})
+			query_result = self.queryTwitterInfo(user_id, guild_id, "timeline_info")
+			if push_to_discord:
+				if update_min:
+					self.db["twitter_info"].update_one(query_result, {"$set": {"timeline_info.min_id": min_id}})
+				if update_max:
+					self.db["twitter_info"].update_one(query_result, {"$set": {"timeline_info.max_id": max_id}})
 			else:
-				if push_to_discord:
-					self.db["twitter_info"].update_one(query_result, {"$set": {"timeline_info.max_id": last_id}})
-				if sync_to_telegram:
-					self.db["twitter_info"].update_one(query_result, {"$set": {"timeline_info.max_sync_id": last_id}})
+				if update_min:
+					self.db["twitter_info"].update_one(query_result, {"$set": {"timeline_info.min_sync_id": min_id}})
+				if update_max:
+					self.db["twitter_info"].update_one(query_result, {"$set": {"timeline_info.max_sync_id": max_id}})
+
+			# logging.info(self.queryTwitterInfo(user_id, guild_id, "timeline_info"))
 
 			# query_result = self.queryTwitterInfo(user_id, guild_id, "timeline_info")
 			# logging.info(query_result)
@@ -264,7 +269,7 @@ class Twitter(commands.Cog):
 
 
 
-	@tasks.loop(minutes=60*24*365)
+	@tasks.loop(minutes=180)
 	async def sync(self):
 
 		logging.info("Sync...")

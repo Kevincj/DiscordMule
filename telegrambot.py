@@ -45,7 +45,7 @@ class TelegramBot(commands.Cog):
 				sync_needed = True
 
 		if sync_needed: 
-			await self.bot.get_cog("Twitter").sync()
+			await self.bot.get_cog("Twitter").sync.start()
 
 
 	# @commands.command(pass_context=True, help="activate telegram bot")
