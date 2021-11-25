@@ -92,8 +92,8 @@ def main():
 	@bot.event
 	async def on_message(message: discord.Message) -> None:
 
-		if message.author != bot.user:
-			logging.info("Received from %s: %s" % (message.author, message.content))
+		# if message.author != bot.user:
+		# 	logging.info("Received from %s: %s" % (message.author, message.content))
 
 		await bot.process_commands(message)
 

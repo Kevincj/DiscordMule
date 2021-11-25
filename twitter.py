@@ -254,6 +254,7 @@ class Twitter(commands.Cog):
 				if update_max:
 					self.db["twitter_info"].update_one(query_result, {"$set": {"timeline_info.max_sync_id": max_id}})
 
+			if len(tweets) < 130: break
 			# logging.info(self.queryTwitterInfo(user_id, guild_id, "timeline_info"))
 
 			# query_result = self.queryTwitterInfo(user_id, guild_id, "timeline_info")
@@ -269,7 +270,7 @@ class Twitter(commands.Cog):
 
 
 
-	@tasks.loop(minutes=180)
+	@tasks.loop(minutes=60)
 	async def sync(self):
 
 		logging.info("Sync...")
