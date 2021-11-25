@@ -30,6 +30,7 @@ class TelegramBot(commands.Cog):
 		self.telegram_cache = defaultdict(lambda : defaultdict(lambda : None))
 
 
+
 	@commands.Cog.listener() 
 	async def on_ready(self):
 		await self.updateSyncStatus()
@@ -46,6 +47,13 @@ class TelegramBot(commands.Cog):
 
 		if sync_needed: 
 			await self.bot.get_cog("Twitter").sync.start()
+
+
+
+	
+
+
+
 
 
 
@@ -150,14 +158,14 @@ class TelegramBot(commands.Cog):
 
 
 
-	def getTelegramChannel(self, author_id: str, guild_id: str, channel_type: str):
+	def getTelegramChannel(self, user_id: str, guild_id: str, channel_type: str):
 
 
-		if (author_id, guild_id) in self.telegram_cache.keys():
-			return self.telegram_cache[(author_id, guild_id)][channel_type]
+		if (user_id, guild_id) in self.telegram_cache.keys():
+			return self.telegram_cache[(user_id, guild_id)][channel_type]
 
 		else:
-			query_result = self.db["telegram_info"].find_one({"user_id": author_id, "guild_id": guild_id})
+			query_result = self.db["telegram_info"].find_one({"user_id": user_id, "guild_id": guild_id})
 			if not query_result: return None
 
 			return query_result[channel_type]

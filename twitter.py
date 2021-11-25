@@ -33,6 +33,7 @@ class Twitter(commands.Cog):
 		self.sync_status = defaultdict(lambda: defaultdict(lambda: False))
 
 		self.url_pattern = re.compile("(https?:..t.co.\w+)$")
+		self.like_link_pattern = re.compile("https?:\/\/(www\.)?twitter.com\/(\w*)")
 
 
 		self.RATE_LIMIT_TL = 15
@@ -261,6 +262,81 @@ class Twitter(commands.Cog):
 			# logging.info(query_result)
 
 
+	async def addByLink(self, user_id: str, guild_id: str, type_name: str, keyword: str):
+
+
+
+
+		query_result = self.queryTwitterInfo(user_id, guild_id, "like_info")
+		if query_result:
+			new_like_info = copy.deepcopy(query_result["like_info"])
+			if screen_name in new_like_info.keys():
+				self.db["twitter_info"].update_one(query_result， {"$set": {"like_info.%s" % screen_name: True}})
+
+		else:
+			entry = copy.deepcopy(TWITTER_TEMPLATE)
+			entry["user_id"] = str(author.id)
+			entry["guild_id"] = str(ctx.guild.id)
+			entry["like_info"] = {screen_name: True}
+			self.db["twitter_info"].insert_one(entry)
+
+
+	@commands.command(pass_context=True, help="add an account for focus tracking")
+	async def addFocusByLink(self, ctx: commands.Context, *, arg: str):
+		
+		author, guild = ctx.message.author, ctx.guild
+		user_id, guild_id = str(author.id), str(guild.id)
+
+		logging.info("Adding to like tracking...")
+
+		re_result = self.like_link_pattern.search(arg)
+		if not re_result:
+			await ctx.send("Please provide a valid link of the twitter account.")
+			return
+
+		screen_name = re_result[1]
+
+		await self.addByLink(user_id, guild_id, "focus_info", screen_name)
+
+
+
+	@commands.command(pass_context=True, help="add an account for list tracking")
+	async def addListByLink(self, ctx: commands.Context, *, arg: str):
+		
+		author, guild = ctx.message.author, ctx.guild
+		user_id, guild_id = str(author.id), str(guild.id)
+
+		logging.info("Adding to like tracking...")
+
+		re_result = self.like_link_pattern.search(arg)
+		if not re_result:
+			await ctx.send("Please provide a valid link of the twitter account.")
+			return
+
+		screen_name = re_result[1]
+
+		await self.addByLink(user_id, guild_id, "list_info", screen_name)
+
+
+
+	@commands.command(pass_context=True, help="add an account for like tracking")
+	async def addLikeByLink(self, ctx: commands.Context, *, arg: str):
+		
+		author, guild = ctx.message.author, ctx.guild
+		user_id, guild_id = str(author.id), str(guild.id)
+
+		logging.info("Adding to like tracking...")
+
+		re_result = self.like_link_pattern.search(arg)
+		if not re_result:
+			await ctx.send("Please provide a valid link of the twitter account.")
+			return
+
+		screen_name = re_result[1]
+
+		await self.addByLink(user_id, guild_id, "like_info", screen_name)
+
+
 
 
 	@commands.command(pass_context=True, help="grab medias from your Twitter timeline")
@@ -291,7 +367,7 @@ class Twitter(commands.Cog):
 		author, guild = ctx.message.author, ctx.guild
 		user_id, guild_id = str(author.id), str(guild.id)
 
-		if not self.bot.get_cog("TelegramBot").getTelegramChannel(ctx, "like_channel"):
+		if not self.bot.get_cog("TelegramBot").getTelegramChannel(user_id, guild_id, "like_channel"):
 			await ctx.send("Please bind your Telegram channel first.")
 			return
 
@@ -309,7 +385,7 @@ class Twitter(commands.Cog):
 		author, guild = ctx.message.author, ctx.guild
 		user_id, guild_id = str(author.id), str(guild.id)
 
-		if not self.bot.get_cog("TelegramBot").getTelegramChannel(ctx, "list_channel"):
+		if not self.bot.get_cog("TelegramBot").getTelegramChannel(user_id, guild_id, "list_channel"):
 			await ctx.send("Please bind your Telegram channel first.")
 			return
 
@@ -327,7 +403,7 @@ class Twitter(commands.Cog):
 		author, guild = ctx.message.author, ctx.guild
 		user_id, guild_id = str(author.id), str(guild.id)
 
-		if not self.bot.get_cog("TelegramBot").getTelegramChannel(ctx, "tl_channel"):
+		if not self.bot.get_cog("TelegramBot").getTelegramChannel(user_id, guild_id, "tl_channel"):
 			await ctx.send("Please bind your Telegram channel first.")
 			return
 
