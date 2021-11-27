@@ -271,7 +271,7 @@ class Twitter(commands.Cog):
 		if query_result:
 			new_like_info = copy.deepcopy(query_result["like_info"])
 			if screen_name in new_like_info.keys():
-				self.db["twitter_info"].update_one(query_result， {"$set": {"like_info.%s" % screen_name: True}})
+				self.db["twitter_info"].update_one(query_result, {"$set": {"like_info.%s" % screen_name: True}})
 
 		else:
 			entry = copy.deepcopy(TWITTER_TEMPLATE)
