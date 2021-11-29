@@ -138,32 +138,32 @@ class Twitter(commands.Cog):
 		return self.db["twitter_info"].find_one({"user_id": user_id, "guild_id": guild_id}, fields_dict)
 
 
-	def updateDatabase(self, user_id: str, guild_id: str, category: str, min_id: int, max_id: int, push_to_discord: bool = False, push_to_telegram: bool = False, update_min: bool = False, update_max: bool = False, sub_category: str = None):
+	def updateDatabase(self, user_id: str, guild_id: str, category: str, latest_id: int = 0, push_to_discord: bool = False, sync_to_telegram: bool = False, update_min: bool = False, update_max: bool = False, sub_category: str = None):
 		query_result = self.queryTwitterInfo(user_id, guild_id, category)
-		logging.info(query_result)
+		# logging.info(query_result)
 
 		if category == "timeline_info":
 			if push_to_discord:
 				if update_min:
-					self.db["twitter_info"].update_one(query_result, {"$set": {"%s.min_id" % (category): min_id}})
+					self.db["twitter_info"].update_one(query_result, {"$set": {"%s.min_id" % (category): latest_id}})
 				if update_max:
-					self.db["twitter_info"].update_one(query_result, {"$set": {"%s.max_id" % (category): max_id}})
-			else:
+					self.db["twitter_info"].update_one(query_result, {"$set": {"%s.max_id" % (category): latest_id}})
+			elif sync_to_telegram:
 				if update_min:
-					self.db["twitter_info"].update_one(query_result, {"$set": {"%s.min_sync_id" % (category): min_id}})
+					self.db["twitter_info"].update_one(query_result, {"$set": {"%s.min_sync_id" % (category): latest_id}})
 				if update_max:
-					self.db["twitter_info"].update_one(query_result, {"$set": {"%s.max_sync_id" % (category): max_id}})
+					self.db["twitter_info"].update_one(query_result, {"$set": {"%s.max_sync_id" % (category): latest_id}})
 		else:
 			if push_to_discord:
 				if update_min:
-					self.db["twitter_info"].update_one(query_result, {"$set": {"%s.%s.min_id" % (category, sub_category): min_id}})
+					self.db["twitter_info"].update_one(query_result, {"$set": {"%s.%s.min_id" % (category, sub_category): latest_id}})
 				if update_max:
-					self.db["twitter_info"].update_one(query_result, {"$set": {"%s.%s.max_id" % (category, sub_category): max_id}})
-			else:
+					self.db["twitter_info"].update_one(query_result, {"$set": {"%s.%s.max_id" % (category, sub_category): latest_id}})
+			elif sync_to_telegram:
 				if update_min:
-					self.db["twitter_info"].update_one(query_result, {"$set": {"%s.%s.min_sync_id" % (category, sub_category): min_id}})
+					self.db["twitter_info"].update_one(query_result, {"$set": {"%s.%s.min_sync_id" % (category, sub_category): latest_id}})
 				if update_max:
-					self.db["twitter_info"].update_one(query_result, {"$set": {"%s.%s.max_sync_id" % (category, sub_category): max_id}})
+					self.db["twitter_info"].update_one(query_result, {"$set": {"%s.%s.max_sync_id" % (category, sub_category): latest_id}})
 
 
 	async def getTimeline(self, user_id: str, guild_id: str, ctx: commands.Context = None, push_to_discord: bool = False, sync_to_telegram: bool = False, reverse: bool = False):
@@ -225,7 +225,9 @@ class Twitter(commands.Cog):
 			logging.info("Nothing fetched, finished.")
 		logging.info("Fetched %d tweets" % len(tweets))
 
-		for idx, tweet in enumerate(tweets):
+		if not reverse: tweets = tweets[::-1]
+
+		for tweet in tweets:
 				
 			re_result = self.url_pattern.search(tweet.text)
 			if not re_result:
@@ -234,8 +236,7 @@ class Twitter(commands.Cog):
 			tweet_link = re_result[1]
 			screen_name = tweet.user.screen_name
 
-
-			min_id = tweet.id
+			current_id = tweet.id
 
 			media_list = []
 			if hasattr(tweet, "extended_entities"):
@@ -281,19 +282,21 @@ class Twitter(commands.Cog):
 							await asyncio.sleep(1)
 						except aiogram.utils.exceptions.RetryAfter as err:
 
-							logging.info("Finished %d tweets. Updating timeline info to database..." % tweet_ct)
-							self.updateDatabase(user_id, guild_id, "timeline_info", min_id, max_id, push_to_discord, push_to_telegram, update_min, update_max)
-
 							logging.error("Reached limit while processing %5d... Try again in %d seconds" % (tweet_ct, err.timeout))
 							await asyncio.sleep(err.timeout)
 						# except aiogram.utils.exceptions.BadRequest as err:
 							# logging.error("Bad Request. Skipped.")
 							# logging.error(err)
 							# skpped = True
+			if tweet_ct % 20 == 0:
+				logging.info("Finished %d tweets. Updating timeline info to database..."% tweet_ct)
+				# logging.info("current_id %d on %s" % (current_id, "min" if update_min else "max"))
+				self.updateDatabase(user_id, guild_id, "timeline_info", current_id, push_to_discord, sync_to_telegram, update_min, update_max)
 
 				
 		logging.info("Finished %d tweets. Updating timeline info to database..." % tweet_ct)					
-		self.updateDatabase(user_id, guild_id, "timeline_info", min_id, max_id, push_to_discord, push_to_telegram, update_min, update_max)
+		# logging.info("current_id %d on %s" % (current_id, "min" if update_min else "max"))
+		self.updateDatabase(user_id, guild_id, "timeline_info", current_id, push_to_discord, sync_to_telegram, update_min, update_max)
 
 
 
