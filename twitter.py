@@ -33,7 +33,8 @@ class Twitter(commands.Cog):
 		self.sync_status = defaultdict(lambda: defaultdict(lambda: False))
 
 		self.url_pattern = re.compile("(https?:..t.co.\w+)$")
-		self.like_link_pattern = re.compile("https?:\/\/(www\.)?twitter.com\/(\w*)")
+		self.user_link_pattern = re.compile("https?:\/\/(www\.)?twitter.com\/(\w*)$")
+		self.list_link_pattern = re.compile("https?:\/\/(www\.)?twitter.com\/i\/lists\/(\w*)$")
 
 
 		self.RATE_LIMIT_TL = 15
@@ -289,7 +290,7 @@ class Twitter(commands.Cog):
 
 		logging.info("Adding to like tracking...")
 
-		re_result = self.like_link_pattern.search(arg)
+		re_result = self.user_link_pattern.search(arg)
 		if not re_result:
 			await ctx.send("Please provide a valid link of the twitter account.")
 			return
@@ -308,9 +309,9 @@ class Twitter(commands.Cog):
 
 		logging.info("Adding to like tracking...")
 
-		re_result = self.like_link_pattern.search(arg)
+		re_result = self.list_link_pattern.search(arg)
 		if not re_result:
-			await ctx.send("Please provide a valid link of the twitter account.")
+			await ctx.send("Please provide a valid link of the twitter list.")
 			return
 
 		screen_name = re_result[1]
@@ -327,7 +328,7 @@ class Twitter(commands.Cog):
 
 		logging.info("Adding to like tracking...")
 
-		re_result = self.like_link_pattern.search(arg)
+		re_result = self.user_link_pattern.search(arg)
 		if not re_result:
 			await ctx.send("Please provide a valid link of the twitter account.")
 			return
