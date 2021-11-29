@@ -391,9 +391,18 @@ class Twitter(commands.Cog):
 
 	@commands.command(pass_context=True, help="grab medias from your Twitter timeline")
 	async def timeline(self, ctx: commands.Context):
+		author, guild = ctx.message.author, ctx.guild
+		user_id, guild_id = str(author.id), str(guild.id)
 
-		await self.getTimeline(ctx, push_to_discord= True)
+		await self.getTimeline(user_id, guild_id, ctx, push_to_discord= True)
 
+
+	@commands.command(pass_context=True, help="grab medias from your Twitter timeline (older than recorded)")
+	async def timelineReverse(self, ctx: commands.Context):
+		author, guild = ctx.message.author, ctx.guild
+		user_id, guild_id = str(author.id), str(guild.id)
+
+		await self.getTimeline(user_id, guild_id, ctx, push_to_discord= True, reverse = True)
 
 
 	@tasks.loop(minutes=60)
@@ -464,4 +473,14 @@ class Twitter(commands.Cog):
 		if not self.sync.is_running():
 			self.sync.start()
 
+	@commands.command(pass_context=True)
+	async def syncTimelineReverse(self, ctx: commands.Context):
+		author, guild = ctx.message.author, ctx.guild
+		user_id, guild_id = str(author.id), str(guild.id)
 
+		if not self.bot.get_cog("TelegramBot").getTelegramChannel(user_id, guild_id, "tl_channel"):
+			await ctx.send("Please bind your Telegram channel first.")
+			return
+
+		logging.info("Retrieving older tweets in timeline...")
+		await self.getTimeline(user_id, guild_id, sync_to_telegram= True, reverse = True)
