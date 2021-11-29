@@ -424,6 +424,3 @@ class Twitter(commands.Cog):
 			self.sync.start()
 
 
-	@commands.command
-	async def sayHiFromTwitterCog(self, ctx: commands.Context):
-		await self.bot.get_cog("General").hi(ctx)
