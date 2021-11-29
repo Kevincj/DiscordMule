@@ -20,35 +20,23 @@ TWEET_TEMPLATE = {
 	"guild_id": None
 	}
 
+INFO_TEMPLATE = {
+	"max_id": 0,
+	"max_sync_id": 0,
+	"min_id": 0,
+	"min_sync_id": 0
+	}
+
 TWITTER_TEMPLATE = {
 	"user_id": None,
 	"guild_id": None,
 	"tweet_token": None,
-	"timeline_info":{
-		"max_id": 0,
-		"max_sync_id": 0,
-		"min_id": 0,
-		"min_sync_id": 0
-		},
-	"focus_info":{
-		"max_id": 0,
-		"max_sync_id": 0,
-		"min_id": 0,
-		"min_sync_id": 0
-		},
-	"likes_info":{
-		"max_id": 0,
-		"max_sync_id": 0,
-		"min_id": 0,
-		"min_sync_id": 0
-		},
-	"lists_info":{
-		"max_id": 0,
-		"max_sync_id": 0,
-		"min_id": 0,
-		"min_sync_id": 0
-		},
+	"timeline_info":INFO_TEMPLATE,
+	"focus_info":{},
+	"likes_info":{},
+	"lists_info":{}
 	}
+
 
 TELEGRAM_TEMPLATE = {
 	"user_id": None,

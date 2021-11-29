@@ -12,7 +12,7 @@ import configparser
 from discord.ext import tasks
 from discord.ext import commands
 from collections import defaultdict
-from template import TWEET_TEMPLATE, TWITTER_TEMPLATE
+from template import TWEET_TEMPLATE, TWITTER_TEMPLATE, INFO_TEMPLATE
 
 
 
@@ -264,21 +264,29 @@ class Twitter(commands.Cog):
 
 
 	async def addByLink(self, user_id: str, guild_id: str, type_name: str, keyword: str):
+		"""
+		Add binding info into the database
 
+		:param user_id: id of the user
+		:param guild_id: id of the guild
+		:param type_name: type of the info to add, from {"list_info", "focus_info", "like_info"}
+		:param keyword: list or user's screen name
+		:return: None
+		"""
+		query_result = self.queryTwitterInfo(user_id, guild_id, type_name)
 
-
-
-		query_result = self.queryTwitterInfo(user_id, guild_id, "like_info")
-		if query_result:
-			new_like_info = copy.deepcopy(query_result["like_info"])
-			if screen_name in new_like_info.keys():
-				self.db["twitter_info"].update_one(query_result, {"$set": {"like_info.%s" % screen_name: True}})
+		finished = False
+		if query_result and type_name in query_result.keys():
+			if keyword in query_result[type_name].keys():
+				return
+			
+			self.db["twitter_info"].update_one(query_result, {"$set": {"%s.%s" % (type_name, keyword): INFO_TEMPLATE}})
 
 		else:
 			entry = copy.deepcopy(TWITTER_TEMPLATE)
-			entry["user_id"] = str(author.id)
-			entry["guild_id"] = str(ctx.guild.id)
-			entry["like_info"] = {screen_name: True}
+			entry["user_id"] = str(user_id)
+			entry["guild_id"] = str(guild_id)
+			entry[type_name] = {keyword: INFO_TEMPLATE}
 			self.db["twitter_info"].insert_one(entry)
 
 
@@ -288,14 +296,14 @@ class Twitter(commands.Cog):
 		author, guild = ctx.message.author, ctx.guild
 		user_id, guild_id = str(author.id), str(guild.id)
 
-		logging.info("Adding to like tracking...")
+		logging.info("Adding to focus tracking...")
 
 		re_result = self.user_link_pattern.search(arg)
 		if not re_result:
 			await ctx.send("Please provide a valid link of the twitter account.")
 			return
 
-		screen_name = re_result[1]
+		screen_name = re_result[2]
 
 		await self.addByLink(user_id, guild_id, "focus_info", screen_name)
 
@@ -307,16 +315,16 @@ class Twitter(commands.Cog):
 		author, guild = ctx.message.author, ctx.guild
 		user_id, guild_id = str(author.id), str(guild.id)
 
-		logging.info("Adding to like tracking...")
+		logging.info("Adding to list tracking...")
 
 		re_result = self.list_link_pattern.search(arg)
 		if not re_result:
 			await ctx.send("Please provide a valid link of the twitter list.")
 			return
 
-		screen_name = re_result[1]
+		list_id = re_result[2]
 
-		await self.addByLink(user_id, guild_id, "list_info", screen_name)
+		await self.addByLink(user_id, guild_id, "list_info", list_id)
 
 
 
@@ -333,7 +341,7 @@ class Twitter(commands.Cog):
 			await ctx.send("Please provide a valid link of the twitter account.")
 			return
 
-		screen_name = re_result[1]
+		screen_name = re_result[2]
 
 		await self.addByLink(user_id, guild_id, "like_info", screen_name)
 
