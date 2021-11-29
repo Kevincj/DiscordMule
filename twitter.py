@@ -138,6 +138,34 @@ class Twitter(commands.Cog):
 		return self.db["twitter_info"].find_one({"user_id": user_id, "guild_id": guild_id}, fields_dict)
 
 
+	def updateDatabase(self, user_id: str, guild_id: str, category: str, min_id: int, max_id: int, push_to_discord: bool = False, push_to_telegram: bool = False, update_min: bool = False, update_max: bool = False, sub_category: str = None):
+		query_result = self.queryTwitterInfo(user_id, guild_id, category)
+		logging.info(query_result)
+
+		if category == "timeline_info":
+			if push_to_discord:
+				if update_min:
+					self.db["twitter_info"].update_one(query_result, {"$set": {"%s.min_id" % (category): min_id}})
+				if update_max:
+					self.db["twitter_info"].update_one(query_result, {"$set": {"%s.max_id" % (category): max_id}})
+			else:
+				if update_min:
+					self.db["twitter_info"].update_one(query_result, {"$set": {"%s.min_sync_id" % (category): min_id}})
+				if update_max:
+					self.db["twitter_info"].update_one(query_result, {"$set": {"%s.max_sync_id" % (category): max_id}})
+		else:
+			if push_to_discord:
+				if update_min:
+					self.db["twitter_info"].update_one(query_result, {"$set": {"%s.%s.min_id" % (category, sub_category): min_id}})
+				if update_max:
+					self.db["twitter_info"].update_one(query_result, {"$set": {"%s.%s.max_id" % (category, sub_category): max_id}})
+			else:
+				if update_min:
+					self.db["twitter_info"].update_one(query_result, {"$set": {"%s.%s.min_sync_id" % (category, sub_category): min_id}})
+				if update_max:
+					self.db["twitter_info"].update_one(query_result, {"$set": {"%s.%s.max_sync_id" % (category, sub_category): max_id}})
+
+
 	async def getTimeline(self, user_id: str, guild_id: str, ctx: commands.Context = None, push_to_discord: bool = False, sync_to_telegram: bool = False, reverse: bool = False):
 		'''
 		Retrieve timeline of the user
@@ -155,20 +183,6 @@ class Twitter(commands.Cog):
 		tweet_ct = 0
 		if not (push_to_discord or sync_to_telegram): return
 
-		def updateDatabase():
-			logging.info("Finished %d tweets. Updating timeline info to database..." % tweet_ct)
-			query_result = self.queryTwitterInfo(user_id, guild_id, "timeline_info")
-			logging.info(query_result)
-			if push_to_discord:
-				if update_min:
-					self.db["twitter_info"].update_one(query_result, {"$set": {"timeline_info.min_id": min_id}})
-				if update_max:
-					self.db["twitter_info"].update_one(query_result, {"$set": {"timeline_info.max_id": max_id}})
-			else:
-				if update_min:
-					self.db["twitter_info"].update_one(query_result, {"$set": {"timeline_info.min_sync_id": min_id}})
-				if update_max:
-					self.db["twitter_info"].update_one(query_result, {"$set": {"timeline_info.max_sync_id": max_id}})
 
 
 
@@ -267,7 +281,8 @@ class Twitter(commands.Cog):
 							await asyncio.sleep(1)
 						except aiogram.utils.exceptions.RetryAfter as err:
 
-							updateDatabase()
+							logging.info("Finished %d tweets. Updating timeline info to database..." % tweet_ct)
+							self.updateDatabase(user_id, guild_id, "timeline_info", min_id, max_id, push_to_discord, push_to_telegram, update_min, update_max)
 
 							logging.error("Reached limit while processing %5d... Try again in %d seconds" % (tweet_ct, err.timeout))
 							await asyncio.sleep(err.timeout)
@@ -276,8 +291,9 @@ class Twitter(commands.Cog):
 							# logging.error(err)
 							# skpped = True
 
-									
-		updateDatabase()
+				
+		logging.info("Finished %d tweets. Updating timeline info to database..." % tweet_ct)					
+		self.updateDatabase(user_id, guild_id, "timeline_info", min_id, max_id, push_to_discord, push_to_telegram, update_min, update_max)
 
 
 
