@@ -41,8 +41,17 @@ class TelegramBot(commands.Cog):
 		for entry in self.db["telegram_info"].find({}): 
 			# logging.info(entry)
 			if entry["tl_channel"]:
-				self.bot.get_cog("Twitter").sync_status[(entry["user_id"], entry["guild_id"])]["timeline"] = True
-				logging.info(self.bot.get_cog("Twitter").sync_status[(entry["user_id"], entry["guild_id"])])
+				self.bot.get_cog("Twitter").sync_status[(entry["user_id"], entry["guild_id"])]["timeline_info"] = True
+				# logging.info(self.bot.get_cog("Twitter").sync_status[(entry["user_id"], entry["guild_id"])])
+				sync_needed = True
+			if entry["focus_channel"]:
+				self.bot.get_cog("Twitter").sync_status[(entry["user_id"], entry["guild_id"])]["focus_info"] = True
+				sync_needed = True
+			if entry["list_channel"]:
+				self.bot.get_cog("Twitter").sync_status[(entry["user_id"], entry["guild_id"])]["list_info"] = True
+				sync_needed = True
+			if entry["like_channel"]:
+				self.bot.get_cog("Twitter").sync_status[(entry["user_id"], entry["guild_id"])]["like_info"] = True
 				sync_needed = True
 
 		if sync_needed: 
@@ -189,17 +198,19 @@ class TelegramBot(commands.Cog):
 
 		if len(medias) == 0: return
 
-		if channel_type == "timeline":
+		if channel_type == "timeline_info":
 			target_channel = self.getTelegramChannel(author_id, guild_id, "tl_channel")
-		elif channel_type == "likes":
+		elif channel_type == "like_info":
 			target_channel = self.getTelegramChannel(author_id, guild_id, "like_channel")
-		elif channel_type == "lists":
+		elif channel_type == "list_info":
 			target_channel = self.getTelegramChannel(author_id, guild_id, "list_channel")
-		elif channel_type == "focus":
+		elif channel_type == "focus_info":
 			target_channel = self.getTelegramChannel(author_id, guild_id, "focus_channel")
 		else:
 			return
 
+		# logging.info("Target channel: %s" % target_channel)
+		
 		if len(medias) == 1:
 			for j in range(len(medias)-1,-1,-1):
 				media, isVideo = medias[0][j]
