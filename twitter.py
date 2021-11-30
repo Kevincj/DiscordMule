@@ -522,11 +522,32 @@ class Twitter(commands.Cog):
 
 
 	@commands.command(pass_context=True, help="grab medias from your Twitter timeline")
-	async def timeline(self, ctx: commands.Context):
+	async def getTimelineFromTwitter(self, ctx: commands.Context):
 		author, guild = ctx.message.author, ctx.guild
 		user_id, guild_id = str(author.id), str(guild.id)
 
 		await self.getTweets(user_id, guild_id, "timeline_info", ctx, push_to_discord= True)
+
+	@commands.command(pass_context=True, help="grab medias from your Twitter focused users")
+	async def getFocusFromTwitter(self, ctx: commands.Context):
+		author, guild = ctx.message.author, ctx.guild
+		user_id, guild_id = str(author.id), str(guild.id)
+
+		await self.getTweets(user_id, guild_id, "focus_info", ctx, push_to_discord= True)
+
+	@commands.command(pass_context=True, help="grab medias from your Twitter lists")
+	async def getListFromTwitter(self, ctx: commands.Context):
+		author, guild = ctx.message.author, ctx.guild
+		user_id, guild_id = str(author.id), str(guild.id)
+
+		await self.getTweets(user_id, guild_id, "list_info", ctx, push_to_discord= True)
+
+	@commands.command(pass_context=True, help="grab medias from likes from target users")
+	async def getLikeFromTwitter(self, ctx: commands.Context):
+		author, guild = ctx.message.author, ctx.guild
+		user_id, guild_id = str(author.id), str(guild.id)
+
+		await self.getTweets(user_id, guild_id, "like_info", ctx, push_to_discord= True)
 
 
 	@commands.command(pass_context=True, help="grab medias from your Twitter timeline (older than recorded)")
