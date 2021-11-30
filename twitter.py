@@ -226,18 +226,17 @@ class Twitter(commands.Cog):
 							await asyncio.sleep(1)
 						except aiogram.utils.exceptions.RetryAfter as err:
 
-							logging.error("Reached limit while processing %5d... Try again in %d seconds" % (tweet_ct, err.timeout))
+							logging.info("Finished %d tweets. Try again in %d seconds. Updating [%s-%s] info to database..."% (tweet_ct, err.timeout, category, sub_category))
+							# logging.info("current_id %d on %s" % (current_id, "min" if update_min else "max"))
+							self.updateDatabase(user_id, guild_id, category, current_id, push_to_discord, sync_to_telegram, update_min, update_max, sub_category)
+
 							await asyncio.sleep(err.timeout)
 
 						# except aiogram.utils.exceptions.BadRequest as err:
 							# logging.error("Bad Request. Skipped.")
 							# logging.error(err)
 							# skpped = True
-			if tweet_ct and tweet_ct % 20 == 0:
-				logging.info("Finished %d tweets. Updating [%s-%s] info to database..."% (tweet_ct, category, sub_category))
-				# logging.info("current_id %d on %s" % (current_id, "min" if update_min else "max"))
-				self.updateDatabase(user_id, guild_id, category, current_id, push_to_discord, sync_to_telegram, update_min, update_max, sub_category)
-
+				
 				
 		logging.info("Finished %d tweets. Updating [%s-%s] info to database..." % (tweet_ct, category, sub_category))					
 		# logging.info("current_id %d on %s" % (current_id, "min" if update_min else "max"))
