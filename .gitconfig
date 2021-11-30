@@ -1,3 +1,5 @@
 [alias]
-    hide = update-index --assume-unchanged
+    hide = update-index --assume-unchanged 
     unhide = update-index --no-assume-unchanged
+    untrack = update-index --skip-worktree
+    track = git update-index --no-skip-worktree
