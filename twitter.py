@@ -557,7 +557,7 @@ class Twitter(commands.Cog):
 
 
 	@commands.command(pass_context=True)
-	async def syncLikes(self, ctx: commands.Context):
+	async def syncLike(self, ctx: commands.Context):
 
 		author, guild = ctx.message.author, ctx.guild
 		user_id, guild_id = str(author.id), str(guild.id)
@@ -566,8 +566,8 @@ class Twitter(commands.Cog):
 			await ctx.send("Please bind your Telegram channel first.")
 			return
 
-		logging.info("Toggle tl sync for %d" % author.id)
-		self.sync_likes_context[(user_id, guild_id)] = ctx
+		logging.info("Toggle like sync for %d" % user_id)
+		self.sync_status[(user_id, guild_id)]["like_info"] = True
 
 		if not self.sync.is_running():
 			self.sync.start()
@@ -575,7 +575,24 @@ class Twitter(commands.Cog):
 
 
 	@commands.command(pass_context=True)
-	async def syncLists(self, ctx: commands.Context):
+	async def syncFocus(self, ctx: commands.Context):
+
+		author, guild = ctx.message.author, ctx.guild
+		user_id, guild_id = str(author.id), str(guild.id)
+
+		if not self.bot.get_cog("TelegramBot").getTelegramChannel(user_id, guild_id, "focus_channel"):
+			await ctx.send("Please bind your Telegram channel first.")
+			return
+
+		logging.info("Toggle focus sync for %d" % user_id)
+		self.sync_status[(user_id, guild_id)]["focus_info"] = True
+
+		if not self.sync.is_running():
+			self.sync.start()
+
+
+	@commands.command(pass_context=True)
+	async def syncList(self, ctx: commands.Context):
 
 		author, guild = ctx.message.author, ctx.guild
 		user_id, guild_id = str(author.id), str(guild.id)
@@ -584,8 +601,8 @@ class Twitter(commands.Cog):
 			await ctx.send("Please bind your Telegram channel first.")
 			return
 
-		logging.info("Toggle tl sync for %d" % author.id)
-		self.sync_lists_context[(user_id, guild_id)] = ctx
+		logging.info("Toggle list sync for %d" % user_id)
+		self.sync_status[(user_id, guild_id)]["list_info"] = True
 
 		if not self.sync.is_running():
 			self.sync.start()
@@ -603,7 +620,7 @@ class Twitter(commands.Cog):
 			return
 
 
-		logging.info("Toggle tl sync for %d" % author.id)
+		logging.info("Toggle tl sync for %d" % user_id)
 		self.sync_status[(user_id, guild_id)]["timeline_info"] = True
 
 		if not self.sync.is_running():
