@@ -21,7 +21,6 @@ class TelegramBot(commands.Cog):
 		self.config = config
 		self.db = db
 
-		self.channel = "@" + self.config["Telegram"]["channel"]
 
 		self.tel_bot = Bot(token=self.config["Telegram"]["token"])
 		self.dispatcher = Dispatcher(self.tel_bot)
@@ -51,9 +50,9 @@ class TelegramBot(commands.Cog):
 			if entry["focus_channel"]:
 				self.bot.get_cog("Twitter").sync_status[(entry["user_id"], entry["guild_id"])]["focus_info"] = True
 				sync_needed = True
-			if entry["list_channel"]:
-				self.bot.get_cog("Twitter").sync_status[(entry["user_id"], entry["guild_id"])]["list_info"] = True
-				sync_needed = True
+			# if entry["list_channel"]:
+			# 	self.bot.get_cog("Twitter").sync_status[(entry["user_id"], entry["guild_id"])]["list_info"] = True
+			# 	sync_needed = True
 			if entry["like_channel"]:
 				self.bot.get_cog("Twitter").sync_status[(entry["user_id"], entry["guild_id"])]["like_info"] = True
 				sync_needed = True

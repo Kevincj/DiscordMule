@@ -445,20 +445,20 @@ class Twitter(commands.Cog):
 
 				if reverse and min_id > 0:
 					update_min = True
-					tweets = list(tweepy.Cursor(api.get_favorites, screen_name = user_name, max_id = min_id - 1, count= max_count).items())
+					tweets = list(tweepy.Cursor(api.get_favorites, max_id = min_id - 1, count= max_count).items())
 				elif (not reverse) and max_id > 0:
 					update_max = True
-					tweets = list(tweepy.Cursor(api.get_favorites, screen_name = user_name, since_id = max_id, count= max_count).items())
+					tweets = list(tweepy.Cursor(api.get_favorites, since_id = max_id, count= max_count).items())
 				else:
 					reverse, update_min = True, True
-					tweets = list(tweepy.Cursor(api.get_favorites, screen_name = user_name, count= max_count).items())
+					tweets = list(tweepy.Cursor(api.get_favorites, count= max_count).items())
 
 					query_result = self.queryTwitterInfo(user_id, guild_id, category)
 					self.db["twitter_info"].update_one(query_result, {"$set": {"%s.max_sync_id" % (category): tweets[0].id}})
 
 				if len(tweets) == 0: 
 					logging.info("Nothing fetched, continue.")
-					continue
+					return
 
 				logging.info("Fetched %d tweets" % len(tweets))
 
