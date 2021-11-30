@@ -315,7 +315,7 @@ class Twitter(commands.Cog):
 				query_result = self.queryTwitterInfo(user_id, guild_id, category)
 
 				update_max, update_min = False, False
-				print(query_result[category])
+				# print(query_result[category])
 				for user_name, sync_info in query_result[category].items():
 
 					if push_to_discord:
@@ -355,7 +355,7 @@ class Twitter(commands.Cog):
 				query_result = self.queryTwitterInfo(user_id, guild_id, category)
 
 				update_max, update_min = False, False
-				print(query_result[category])
+				# print(query_result[category])
 				for list_id, sync_info in query_result[category].items():
 
 					if push_to_discord:
@@ -390,11 +390,11 @@ class Twitter(commands.Cog):
 					await self.pushTweets(tweets, user_id, guild_id, category, list_id, update_min, update_max, push_to_discord, sync_to_telegram)
 		
 			case "like_info":
-				logging.info("Acquiring list statuses...")
+				logging.info("Acquiring like statuses...")
 				query_result = self.queryTwitterInfo(user_id, guild_id, category)
 
 				update_max, update_min = False, False
-				print(query_result[category])
+				# print(query_result[category])
 				for user_name, sync_info in query_result[category].items():
 
 					if push_to_discord:
@@ -407,13 +407,13 @@ class Twitter(commands.Cog):
 
 					if reverse and min_id > 0:
 						update_min = True
-						tweets = list(tweepy.Cursor(api.get_favorites, screen_name = user_name, max_id = min_id - 1, count= max_count).items())
+						tweets = list(tweepy.Cursor(api.get_favorites, max_id = min_id - 1, count= max_count).items())
 					elif (not reverse) and max_id > 0:
 						update_max = True
-						tweets = list(tweepy.Cursor(api.get_favorites, screen_name = user_name, since_id = max_id, count= max_count).items())
+						tweets = list(tweepy.Cursor(api.get_favorites, since_id = max_id, count= max_count).items())
 					else:
 						reverse, update_min = True, True
-						tweets = list(tweepy.Cursor(api.get_favorites, screen_name = user_name, count= max_count).items())
+						tweets = list(tweepy.Cursor(api.get_favorites, count= max_count).items())
 
 						query_result = self.queryTwitterInfo(user_id, guild_id, category)
 						self.db["twitter_info"].update_one(query_result, {"$set": {"%s.%s.max_sync_id" % (category, user_name): tweets[0].id}})
@@ -428,7 +428,46 @@ class Twitter(commands.Cog):
 
 					await self.pushTweets(tweets, user_id, guild_id, category, user_name, update_min, update_max, push_to_discord, sync_to_telegram)
 		
+			case "self_like_info":
+				logging.info("Acquiring list statuses...")
+				query_result = self.queryTwitterInfo(user_id, guild_id, category)
+
+				update_max, update_min = False, False
+				sync_info = query_result[category]
+
+				if push_to_discord:
+					max_id, min_id = sync_info["max_id"], sync_info["min_id"]
+
+				elif sync_to_telegram:
+					max_id, min_id = sync_info["max_sync_id"], sync_info["min_sync_id"]
 				
+				max_count = MAX_DISCORD_COUNT if push_to_discord else MAX_TELEGRAM_COUNT
+
+				if reverse and min_id > 0:
+					update_min = True
+					tweets = list(tweepy.Cursor(api.get_favorites, screen_name = user_name, max_id = min_id - 1, count= max_count).items())
+				elif (not reverse) and max_id > 0:
+					update_max = True
+					tweets = list(tweepy.Cursor(api.get_favorites, screen_name = user_name, since_id = max_id, count= max_count).items())
+				else:
+					reverse, update_min = True, True
+					tweets = list(tweepy.Cursor(api.get_favorites, screen_name = user_name, count= max_count).items())
+
+					query_result = self.queryTwitterInfo(user_id, guild_id, category)
+					self.db["twitter_info"].update_one(query_result, {"$set": {"%s.max_sync_id" % (category): tweets[0].id}})
+
+				if len(tweets) == 0: 
+					logging.info("Nothing fetched, continue.")
+					continue
+
+				logging.info("Fetched %d tweets" % len(tweets))
+
+				if not reverse: tweets = tweets[::-1]
+
+				await self.pushTweets(tweets, user_id, guild_id, category, None, update_min, update_max, push_to_discord, sync_to_telegram)
+		
+				
+
 
 
 		
@@ -567,6 +606,8 @@ class Twitter(commands.Cog):
 			# logging.info(channel_status)
 			if channel_status["timeline_info"]:
 				await self.getTweets(key[0], key[1], "timeline_info", sync_to_telegram= True)
+			if channel_status["self_like_info"]:
+				await self.getTweets(key[0], key[1], "self_like_info", sync_to_telegram= True)
 			if channel_status["focus_info"]:
 				await self.getTweets(key[0], key[1], "focus_info", sync_to_telegram= True)
 			if channel_status["like_info"]:

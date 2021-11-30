@@ -44,6 +44,10 @@ class TelegramBot(commands.Cog):
 				self.bot.get_cog("Twitter").sync_status[(entry["user_id"], entry["guild_id"])]["timeline_info"] = True
 				# logging.info(self.bot.get_cog("Twitter").sync_status[(entry["user_id"], entry["guild_id"])])
 				sync_needed = True
+			if entry["self_like_channel"]:
+				self.bot.get_cog("Twitter").sync_status[(entry["user_id"], entry["guild_id"])]["self_like_info"] = True
+				# logging.info(self.bot.get_cog("Twitter").sync_status[(entry["user_id"], entry["guild_id"])])
+				sync_needed = True
 			if entry["focus_channel"]:
 				self.bot.get_cog("Twitter").sync_status[(entry["user_id"], entry["guild_id"])]["focus_info"] = True
 				sync_needed = True
@@ -206,6 +210,8 @@ class TelegramBot(commands.Cog):
 			target_channel = self.getTelegramChannel(author_id, guild_id, "list_channel")
 		elif channel_type == "focus_info":
 			target_channel = self.getTelegramChannel(author_id, guild_id, "focus_channel")
+		elif channel_type == "self_like_info":
+			target_channel = self.getTelegramChannel(author_id, guild_id, "self_like_channel")
 		else:
 			return
 
@@ -249,5 +255,18 @@ class TelegramBot(commands.Cog):
 			await self.tel_bot.send_media_group(chat_id="@"+target_channel, media=media_group)
 		except aiogram.utils.exceptions.BadRequest as err:
 			logging.error("Bad Request: %s" % medias)
+
+			while medias:
+				media_list = [medias[0]]
+				try:
+					self.sendMedias(author_id, guild_id, [media_list], tweet_info, channel_type)
+					medias.pop(0)
+				except aiogram.utils.exceptions.RetryAfter as err:
+					logging.error("Try again in %d seconds." % err.timeout)
+					await asyncio.sleep(err.timeout)
+				except:
+					medias.pop(0)
+
+
 		except asyncio.TimeoutError:
 			logging.error("Timeout. Passed.")

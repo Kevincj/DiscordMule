@@ -32,6 +32,7 @@ TWITTER_TEMPLATE = {
 	"guild_id": None,
 	"tweet_token": None,
 	"timeline_info":INFO_TEMPLATE,
+	"self_like_info":INFO_TEMPLATE,
 	"focus_info":{},
 	"likes_info":{},
 	"lists_info":{}
