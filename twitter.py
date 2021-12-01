@@ -429,7 +429,7 @@ class Twitter(commands.Cog):
 					await self.pushTweets(tweets, user_id, guild_id, category, user_name, update_min, update_max, push_to_discord, sync_to_telegram)
 		
 			case "self_like_info":
-				logging.info("Acquiring list statuses...")
+				logging.info("Acquiring selflike statuses...")
 				query_result = self.queryTwitterInfo(user_id, guild_id, category)
 
 				update_max, update_min = False, False
