@@ -214,7 +214,7 @@ class Twitter(commands.Cog):
 				if self.sync_status[(user_id, guild_id)][category]:
 
 					# logging.info("Sync to Telegram... %s" % tweet_link)
-					logging.info("Current_id: %d" % current_id)
+					# logging.info("Current_id: %d" % current_id)
 					success = False
 					# skipped = False
 					while not success:
