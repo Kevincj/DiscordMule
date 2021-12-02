@@ -508,7 +508,7 @@ class Twitter(commands.Cog):
 
 
 	@commands.command(pass_context=True, help="add an account for focus tracking")
-	async def addFocusByLink(self, ctx: commands.Context, *, arg: str):
+	async def addFocus(self, ctx: commands.Context, *, arg: str):
 		
 		author, guild = ctx.message.author, ctx.guild
 		user_id, guild_id = str(author.id), str(guild.id)
@@ -527,7 +527,7 @@ class Twitter(commands.Cog):
 
 
 	@commands.command(pass_context=True, help="add an account for list tracking")
-	async def addListByLink(self, ctx: commands.Context, *, arg: str):
+	async def addList(self, ctx: commands.Context, *, arg: str):
 		
 		author, guild = ctx.message.author, ctx.guild
 		user_id, guild_id = str(author.id), str(guild.id)
@@ -546,7 +546,7 @@ class Twitter(commands.Cog):
 
 
 	@commands.command(pass_context=True, help="add an account for like tracking")
-	async def addLikeByLink(self, ctx: commands.Context, *, arg: str):
+	async def addLike(self, ctx: commands.Context, *, arg: str):
 		
 		author, guild = ctx.message.author, ctx.guild
 		user_id, guild_id = str(author.id), str(guild.id)
