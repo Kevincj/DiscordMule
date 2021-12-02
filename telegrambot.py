@@ -258,7 +258,7 @@ class TelegramBot(commands.Cog):
 			while medias:
 				media_list = [medias[0]]
 				try:
-					self.sendMedias(author_id, guild_id, [media_list], tweet_info, channel_type)
+					await self.sendMedias(author_id, guild_id, [media_list], tweet_info, channel_type)
 					medias.pop(0)
 				except aiogram.utils.exceptions.RetryAfter as err:
 					logging.error("Try again in %d seconds." % err.timeout)
