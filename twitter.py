@@ -172,7 +172,7 @@ class Twitter(commands.Cog):
 
 		tweet_ct = 0
 
-		if len(tweets) == 0: return
+		current_id = None
 
 		for tweet in tweets:
 				
@@ -231,7 +231,8 @@ class Twitter(commands.Cog):
 
 							logging.info("Finished %d tweets. Try again in %d seconds. Updating [%s-%s] info to database..."% (tweet_ct, err.timeout, category, sub_category))
 							# logging.info("current_id %d on %s" % (current_id, "min" if update_min else "max"))
-							self.updateDatabase(user_id, guild_id, category, current_id, push_to_discord, sync_to_telegram, update_min, update_max, sub_category)
+							if current_id:
+								self.updateDatabase(user_id, guild_id, category, current_id, push_to_discord, sync_to_telegram, update_min, update_max, sub_category)
 
 							await asyncio.sleep(err.timeout)
 
@@ -243,7 +244,8 @@ class Twitter(commands.Cog):
 				
 		logging.info("Finished %d tweets. Updating [%s-%s] info to database..." % (tweet_ct, category, sub_category))					
 		# logging.info("current_id %d on %s" % (current_id, "min" if update_min else "max"))
-		self.updateDatabase(user_id, guild_id, category, current_id, push_to_discord, sync_to_telegram, update_min, update_max, sub_category)
+		if current_id:
+			self.updateDatabase(user_id, guild_id, category, current_id, push_to_discord, sync_to_telegram, update_min, update_max, sub_category)
 
 
 	async def getTweets(self, user_id: str, guild_id: str, category: str, ctx: commands.Context = None, push_to_discord: bool = False, sync_to_telegram: bool = False, reverse: bool = False):
