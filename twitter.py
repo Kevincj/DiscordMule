@@ -171,7 +171,9 @@ class Twitter(commands.Cog):
 	async def pushTweets(self, tweets: list[tweepy.models.Status], user_id: str, guild_id: str, category: str, sub_category: str, update_min: bool = False, update_max: bool = False, push_to_discord: bool = False, sync_to_telegram: bool = False):
 
 		tweet_ct = 0
-		current_id = None
+
+		if len(tweets) == 0: return
+
 		for tweet in tweets:
 				
 			re_result = self.url_pattern.search(tweet.text)
@@ -299,7 +301,9 @@ class Twitter(commands.Cog):
 
 					if len(tweets) > 0:
 						query_result = self.queryTwitterInfo(user_id, guild_id, category)
-						self.db["twitter_info"].update_one(query_result, {"$set": {"timeline_info.min_sync_id": tweets[-1].id}})
+						self.db["twitter_info"].update_one(query_result, {"$set": {
+							"%s.max_sync_id" % category: tweets[-1].id-1,
+							"%s.min_sync_id" % category: tweets[-1].id-1}})
 
 
 				if len(tweets) == 0: 
@@ -325,7 +329,6 @@ class Twitter(commands.Cog):
 
 					elif sync_to_telegram:
 						max_id, min_id = sync_info["max_sync_id"], sync_info["min_sync_id"]
-					
 					max_count = MAX_DISCORD_COUNT if push_to_discord else MAX_TELEGRAM_COUNT
 
 					if reverse and min_id > 0:
@@ -340,7 +343,9 @@ class Twitter(commands.Cog):
 
 						if len(tweets) > 0:
 							query_result = self.queryTwitterInfo(user_id, guild_id, category)
-							self.db["twitter_info"].update_one(query_result, {"$set": {"%s.%s.min_sync_id" % (category, user_name): tweets[-1].id}})
+							self.db["twitter_info"].update_one(query_result, {"$set": {
+								"%s.%s.min_sync_id" % (category, user_name): tweets[-1].id-1,
+								"%s.%s.max_sync_id" % (category, user_name): tweets[-1].id-1}})
 
 					if len(tweets) == 0: 
 						logging.info("Nothing fetched, continue.")
@@ -381,7 +386,9 @@ class Twitter(commands.Cog):
 
 						if len(tweets) > 0:
 							query_result = self.queryTwitterInfo(user_id, guild_id, category)
-							self.db["twitter_info"].update_one(query_result, {"$set": {"%s.%s.min_sync_id" % (category, list_id): tweets[-1].id}})
+							self.db["twitter_info"].update_one(query_result, {"$set": {
+								"%s.%s.min_sync_id" % (category, list_id): tweets[-1].id-1,
+								"%s.%s.max_sync_id" % (category, list_id): tweets[-1].id-1}})
 
 					if len(tweets) == 0: 
 						logging.info("Nothing fetched, continue.")
@@ -421,7 +428,9 @@ class Twitter(commands.Cog):
 
 						if len(tweets) > 0:
 							query_result = self.queryTwitterInfo(user_id, guild_id, category)
-							self.db["twitter_info"].update_one(query_result, {"$set": {"%s.%s.min_sync_id" % (category, user_name): tweets[-1].id}})
+							self.db["twitter_info"].update_one(query_result, {"$set": {
+								"%s.%s.min_sync_id" % (category, user_name): tweets[-1].id-1,
+								"%s.%s.max_sync_id" % (category, user_name): tweets[-1].id-1}})
 
 					if len(tweets) == 0: 
 						logging.info("Nothing fetched, continue.")
@@ -460,7 +469,9 @@ class Twitter(commands.Cog):
 
 					if len(tweets) > 0:
 						query_result = self.queryTwitterInfo(user_id, guild_id, category)
-						self.db["twitter_info"].update_one(query_result, {"$set": {"%s.min_sync_id" % (category): tweets[-1].id}})
+						self.db["twitter_info"].update_one(query_result, {"$set": {
+							"%s.max_sync_id" % category: tweets[-1].id-1,
+							"%s.min_sync_id" % category: tweets[-1].id-1}})
 
 				if len(tweets) == 0: 
 					logging.info("Nothing fetched, continue.")
