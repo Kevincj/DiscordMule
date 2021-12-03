@@ -142,28 +142,29 @@ class Twitter(commands.Cog):
 		query_result = self.queryTwitterInfo(user_id, guild_id, category)
 		# logging.info(query_result)
 
-		if category == "timeline_info":
-			if push_to_discord:
-				if update_min:
-					self.db["twitter_info"].update_one(query_result, {"$set": {"%s.min_id" % (category): latest_id}})
-				if update_max:
-					self.db["twitter_info"].update_one(query_result, {"$set": {"%s.max_id" % (category): latest_id}})
-			elif sync_to_telegram:
-				if update_min:
-					self.db["twitter_info"].update_one(query_result, {"$set": {"%s.min_sync_id" % (category): latest_id}})
-				if update_max:
-					self.db["twitter_info"].update_one(query_result, {"$set": {"%s.max_sync_id" % (category): latest_id}})
-		else:
-			if push_to_discord:
-				if update_min:
-					self.db["twitter_info"].update_one(query_result, {"$set": {"%s.%s.min_id" % (category, sub_category): latest_id}})
-				if update_max:
-					self.db["twitter_info"].update_one(query_result, {"$set": {"%s.%s.max_id" % (category, sub_category): latest_id}})
-			elif sync_to_telegram:
-				if update_min:
-					self.db["twitter_info"].update_one(query_result, {"$set": {"%s.%s.min_sync_id" % (category, sub_category): latest_id}})
-				if update_max:
-					self.db["twitter_info"].update_one(query_result, {"$set": {"%s.%s.max_sync_id" % (category, sub_category): latest_id}})
+		match category:
+			case "timeline_info" | "self_like_info":
+				if push_to_discord:
+					if update_min:
+						self.db["twitter_info"].update_one(query_result, {"$set": {"%s.min_id" % (category): latest_id}})
+					if update_max:
+						self.db["twitter_info"].update_one(query_result, {"$set": {"%s.max_id" % (category): latest_id}})
+				elif sync_to_telegram:
+					if update_min:
+						self.db["twitter_info"].update_one(query_result, {"$set": {"%s.min_sync_id" % (category): latest_id}})
+					if update_max:
+						self.db["twitter_info"].update_one(query_result, {"$set": {"%s.max_sync_id" % (category): latest_id}})
+			case _:
+				if push_to_discord:
+					if update_min:
+						self.db["twitter_info"].update_one(query_result, {"$set": {"%s.%s.min_id" % (category, sub_category): latest_id}})
+					if update_max:
+						self.db["twitter_info"].update_one(query_result, {"$set": {"%s.%s.max_id" % (category, sub_category): latest_id}})
+				elif sync_to_telegram:
+					if update_min:
+						self.db["twitter_info"].update_one(query_result, {"$set": {"%s.%s.min_sync_id" % (category, sub_category): latest_id}})
+					if update_max:
+						self.db["twitter_info"].update_one(query_result, {"$set": {"%s.%s.max_sync_id" % (category, sub_category): latest_id}})
 
 
 
@@ -466,7 +467,7 @@ class Twitter(commands.Cog):
 					return
 
 				logging.info("Fetched %d tweets" % len(tweets))
-
+				print(tweets[0].id)
 				if not reverse: tweets = tweets[::-1]
 
 				await self.pushTweets(tweets, user_id, guild_id, category, None, update_min, update_max, push_to_discord, sync_to_telegram)
