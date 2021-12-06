@@ -56,11 +56,11 @@ class Voice(commands.Cog):
 
 		logging.info("Loading TTS...")
 
-		self.engine = pyttsx3.init()
+		self.engine = pyttsx3.init("espeak")
 
 		for voice in self.engine.getProperty("voices"):
 
-			if "zhCN" in voice.id:
+			if "Mandarin" in voice.id:
 
 				logging.info("Setting voice as: %s" % voice.id)
 				self.engine.setProperty("voice", voice.id)
@@ -136,23 +136,23 @@ class Voice(commands.Cog):
 
 
 
-	@commands.command(pass_context=True, help="TTS from bot")
-	async def say(self, ctx: commands.Context, *, arg: str):
+	# @commands.command(pass_context=True, help="TTS from bot")
+	# async def say(self, ctx: commands.Context, *, arg: str):
 		
-		logging.info("Received -say request from %s: %s" % (ctx.author, arg))
+	# 	logging.info("Received -say request from %s: %s" % (ctx.author, arg))
 
-		if not ctx.author.voice:
-			return await ctx.send("Please join a voice channel before running this command.")
+	# 	if not ctx.author.voice:
+	# 		return await ctx.send("Please join a voice channel before running this command.")
 
-		voice_client = utils.get(ctx.bot.voice_clients, guild = ctx.guild)
+	# 	voice_client = utils.get(ctx.bot.voice_clients, guild = ctx.guild)
 
-		if not self.inSameVoiceChannel(ctx.author.voice, ctx.voice_client):
-			return await ctx.send("I'm not in your voice channel.")
+	# 	if not self.inSameVoiceChannel(ctx.author.voice, ctx.voice_client):
+	# 		return await ctx.send("I'm not in your voice channel.")
 
-
-		self.engine.save_to_file(arg, "tmp.mp3")
-		self.engine.runAndWait()
-		return voice_client.play(FFmpegPCMAudio("tmp.mp3"))
+	# 	print(arg, type(arg))
+	# 	self.engine.save_to_file(arg, "tmp.mp3")
+	# 	self.engine.runAndWait()
+	# 	return voice_client.play(FFmpegPCMAudio("tmp.mp3"))
 
 
 
@@ -267,7 +267,7 @@ class Voice(commands.Cog):
 			self.play_states[guild.id]["current"] = song_info
 			await ctx.send("Now playing: %s" % self.play_states[guild.id]["current"]["title"])
 
-			voice_client.play(FFmpegPCMAudio(song_info["url"], **self.FFMPEG_OPTIONS), after = lambda e: self.play_next(ctx))
+			await voice_client.play(FFmpegPCMAudio(song_info["url"], **self.FFMPEG_OPTIONS), after = lambda e: self.play_next(ctx))
 
 		else:
 			self.play_states[guild.id]["playing"] = False

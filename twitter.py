@@ -208,7 +208,7 @@ class Twitter(commands.Cog):
 			# logging.info("Medias: %s" % media_list)
 
 			if push_to_discord:
-				logging.info("Pushing to discord channel...")
+				# logging.info("Pushing to discord channel...")
 				for media in media_list:
 					await push_to_discord.send(media[0][0])
 
@@ -624,7 +624,7 @@ class Twitter(commands.Cog):
 	async def sync(self):
 
 		logging.info("Sync...")
-		# logging.info(self.sync_status)
+		logging.info(self.sync_status)
 		for key, channel_status in self.sync_status.items():
 			for entry, status in channel_status.items():
 				sync_to_telegram, push_to_discord = status["telegram"], status["discord"]
@@ -647,7 +647,7 @@ class Twitter(commands.Cog):
 			await ctx.send("Please bind your Telegram channel first.")
 			return
 
-		logging.info("Toggle like sync for %d" % user_id)
+		logging.info("Toggle like sync for %s" % user_id)
 		self.sync_status[(user_id, guild_id)]["like_info"]["discord"] = ctx
 
 		if not self.sync.is_running():
@@ -665,7 +665,7 @@ class Twitter(commands.Cog):
 			await ctx.send("Please bind your Telegram channel first.")
 			return
 
-		logging.info("Toggle focus sync for %d" % user_id)
+		logging.info("Toggle focus sync for %s" % user_id)
 		self.sync_status[(user_id, guild_id)]["focus_info"]["discord"] = ctx
 
 		if not self.sync.is_running():
@@ -682,7 +682,7 @@ class Twitter(commands.Cog):
 			await ctx.send("Please bind your Telegram channel first.")
 			return
 
-		logging.info("Toggle list sync for %d" % user_id)
+		logging.info("Toggle list sync for %s" % user_id)
 		self.sync_status[(user_id, guild_id)]["list_info"]["discord"] = ctx
 
 		if not self.sync.is_running():
@@ -701,7 +701,7 @@ class Twitter(commands.Cog):
 			return
 
 
-		logging.info("Toggle tl sync for %d" % user_id)
+		logging.info("Toggle tl sync for %s" % user_id)
 		self.sync_status[(user_id, guild_id)]["timeline_info"]["discord"] = ctx
 
 		if not self.sync.is_running():
@@ -719,7 +719,7 @@ class Twitter(commands.Cog):
 			await ctx.send("Please bind your Telegram channel first.")
 			return
 
-		logging.info("Toggle like sync for %d" % user_id)
+		logging.info("Toggle like sync for %s" % user_id)
 		self.sync_status[(user_id, guild_id)]["like_info"]["telegram"] = True
 
 		if not self.sync.is_running():
@@ -737,7 +737,7 @@ class Twitter(commands.Cog):
 			await ctx.send("Please bind your Telegram channel first.")
 			return
 
-		logging.info("Toggle focus sync for %d" % user_id)
+		logging.info("Toggle focus sync for %s" % user_id)
 		self.sync_status[(user_id, guild_id)]["focus_info"]["telegram"] = True
 
 		if not self.sync.is_running():
@@ -754,7 +754,7 @@ class Twitter(commands.Cog):
 			await ctx.send("Please bind your Telegram channel first.")
 			return
 
-		logging.info("Toggle list sync for %d" % user_id)
+		logging.info("Toggle list sync for %s" % user_id)
 		self.sync_status[(user_id, guild_id)]["list_info"]["telegram"] = True
 
 		if not self.sync.is_running():
@@ -773,7 +773,7 @@ class Twitter(commands.Cog):
 			return
 
 
-		logging.info("Toggle tl sync for %d" % user_id)
+		logging.info("Toggle tl sync for %s" % user_id)
 		self.sync_status[(user_id, guild_id)]["timeline_info"]["telegram"] = True
 
 		if not self.sync.is_running():
