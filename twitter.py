@@ -30,7 +30,7 @@ class Twitter(commands.Cog):
 		self.binding_auths = defaultdict(lambda: None)
 		self.bounded_auths = defaultdict(lambda: None)
 
-		self.sync_status = defaultdict(lambda: defaultdict(lambda: False))
+		self.sync_status = defaultdict(lambda: defaultdict(lambda: {"telegram": False, "discord": False}))
 
 		self.url_pattern = re.compile("(https?:..t.co.\w+)$")
 		self.user_link_pattern = re.compile("https?:\/\/(www\.)?twitter.com\/(\w*)$")
@@ -168,7 +168,7 @@ class Twitter(commands.Cog):
 
 
 
-	async def pushTweets(self, tweets: list[tweepy.models.Status], user_id: str, guild_id: str, category: str, sub_category: str, update_min: bool = False, update_max: bool = False, push_to_discord: bool = False, sync_to_telegram: bool = False):
+	async def pushTweets(self, tweets: list[tweepy.models.Status], user_id: str, guild_id: str, category: str, sub_category: str, update_min: bool = False, update_max: bool = False, push_to_discord = False, sync_to_telegram: bool = False):
 
 		tweet_ct = 0
 
@@ -210,7 +210,7 @@ class Twitter(commands.Cog):
 			if push_to_discord:
 				logging.info("Pushing to discord channel...")
 				for media in media_list:
-					await ctx.send(media[0][0])
+					await push_to_discord.send(media[0][0])
 
 			if sync_to_telegram:
 
@@ -246,6 +246,8 @@ class Twitter(commands.Cog):
 		# logging.info("current_id %d on %s" % (current_id, "min" if update_min else "max"))
 		if current_id:
 			self.updateDatabase(user_id, guild_id, category, current_id, push_to_discord, sync_to_telegram, update_min, update_max, sub_category)
+
+		await asyncio.sleep(15)
 
 
 	async def getTweets(self, user_id: str, guild_id: str, category: str, ctx: commands.Context = None, push_to_discord: bool = False, sync_to_telegram: bool = False, reverse: bool = False):
@@ -580,32 +582,34 @@ class Twitter(commands.Cog):
 
 
 	@commands.command(pass_context=True, help="grab medias from your Twitter timeline")
-	async def getTimelineFromTwitter(self, ctx: commands.Context):
+	async def getTimeline(self, ctx: commands.Context):
 		author, guild = ctx.message.author, ctx.guild
 		user_id, guild_id = str(author.id), str(guild.id)
 
 		await self.getTweets(user_id, guild_id, "timeline_info", ctx, push_to_discord= True)
 
 	@commands.command(pass_context=True, help="grab medias from your Twitter focused users")
-	async def getFocusFromTwitter(self, ctx: commands.Context):
+	async def getFocus(self, ctx: commands.Context):
 		author, guild = ctx.message.author, ctx.guild
 		user_id, guild_id = str(author.id), str(guild.id)
 
 		await self.getTweets(user_id, guild_id, "focus_info", ctx, push_to_discord= True)
 
 	@commands.command(pass_context=True, help="grab medias from your Twitter lists")
-	async def getListFromTwitter(self, ctx: commands.Context):
+	async def getList(self, ctx: commands.Context):
 		author, guild = ctx.message.author, ctx.guild
 		user_id, guild_id = str(author.id), str(guild.id)
 
 		await self.getTweets(user_id, guild_id, "list_info", ctx, push_to_discord= True)
 
 	@commands.command(pass_context=True, help="grab medias from likes from target users")
-	async def getLikeFromTwitter(self, ctx: commands.Context):
+	async def getLike(self, ctx: commands.Context):
 		author, guild = ctx.message.author, ctx.guild
 		user_id, guild_id = str(author.id), str(guild.id)
 
 		await self.getTweets(user_id, guild_id, "like_info", ctx, push_to_discord= True)
+
+
 
 
 	@commands.command(pass_context=True, help="grab medias from your Twitter timeline (older than recorded)")
@@ -622,22 +626,86 @@ class Twitter(commands.Cog):
 		logging.info("Sync...")
 		# logging.info(self.sync_status)
 		for key, channel_status in self.sync_status.items():
-			# logging.info(channel_status)
-			if channel_status["timeline_info"]:
-				await self.getTweets(key[0], key[1], "timeline_info", sync_to_telegram= True)
-			await asyncio.sleep(10)
-			if channel_status["self_like_info"]:
-				await self.getTweets(key[0], key[1], "self_like_info", sync_to_telegram= True)
-			await asyncio.sleep(10)
-			if channel_status["focus_info"]:
-				await self.getTweets(key[0], key[1], "focus_info", sync_to_telegram= True)
-			await asyncio.sleep(10)
-			if channel_status["like_info"]:
-				await self.getTweets(key[0], key[1], "like_info", sync_to_telegram= True)
-			await asyncio.sleep(10)
-			if channel_status["list_info"]:
-				await self.getTweets(key[0], key[1], "list_info", sync_to_telegram= True)
+			for entry, status in channel_status.items():
+				sync_to_telegram, push_to_discord = status["telegram"], status["discord"]
+				if sync_to_telegram:
+					await self.getTweets(key[0], key[1], entry, sync_to_telegram = True)
+				if push_to_discord:
+					 await self.getTweets(key[0], key[1], entry, push_to_discord	 = push_to_discord)
 		logging.info("Finished sync.")
+
+
+
+
+	@commands.command(pass_context=True)
+	async def syncLikeHere(self, ctx: commands.Context):
+
+		author, guild = ctx.message.author, ctx.guild
+		user_id, guild_id = str(author.id), str(guild.id)
+
+		if not self.bot.get_cog("TelegramBot").getTelegramChannel(user_id, guild_id, "like_channel"):
+			await ctx.send("Please bind your Telegram channel first.")
+			return
+
+		logging.info("Toggle like sync for %d" % user_id)
+		self.sync_status[(user_id, guild_id)]["like_info"]["discord"] = ctx
+
+		if not self.sync.is_running():
+			self.sync.start()
+
+
+
+	@commands.command(pass_context=True)
+	async def syncFocusHere(self, ctx: commands.Context):
+
+		author, guild = ctx.message.author, ctx.guild
+		user_id, guild_id = str(author.id), str(guild.id)
+
+		if not self.bot.get_cog("TelegramBot").getTelegramChannel(user_id, guild_id, "focus_channel"):
+			await ctx.send("Please bind your Telegram channel first.")
+			return
+
+		logging.info("Toggle focus sync for %d" % user_id)
+		self.sync_status[(user_id, guild_id)]["focus_info"]["discord"] = ctx
+
+		if not self.sync.is_running():
+			self.sync.start()
+
+
+	@commands.command(pass_context=True)
+	async def syncListHere(self, ctx: commands.Context):
+
+		author, guild = ctx.message.author, ctx.guild
+		user_id, guild_id = str(author.id), str(guild.id)
+
+		if not self.bot.get_cog("TelegramBot").getTelegramChannel(user_id, guild_id, "list_channel"):
+			await ctx.send("Please bind your Telegram channel first.")
+			return
+
+		logging.info("Toggle list sync for %d" % user_id)
+		self.sync_status[(user_id, guild_id)]["list_info"]["discord"] = ctx
+
+		if not self.sync.is_running():
+			self.sync.start()
+
+
+
+	@commands.command(pass_context=True)
+	async def syncTimelineHere(self, ctx: commands.Context):
+
+		author, guild = ctx.message.author, ctx.guild
+		user_id, guild_id = str(author.id), str(guild.id)
+
+		if not self.bot.get_cog("TelegramBot").getTelegramChannel(user_id, guild_id, "tl_channel"):
+			await ctx.send("Please bind your Telegram channel first.")
+			return
+
+
+		logging.info("Toggle tl sync for %d" % user_id)
+		self.sync_status[(user_id, guild_id)]["timeline_info"]["discord"] = ctx
+
+		if not self.sync.is_running():
+			self.sync.start()
 
 
 
@@ -652,7 +720,7 @@ class Twitter(commands.Cog):
 			return
 
 		logging.info("Toggle like sync for %d" % user_id)
-		self.sync_status[(user_id, guild_id)]["like_info"] = True
+		self.sync_status[(user_id, guild_id)]["like_info"]["telegram"] = True
 
 		if not self.sync.is_running():
 			self.sync.start()
@@ -670,7 +738,7 @@ class Twitter(commands.Cog):
 			return
 
 		logging.info("Toggle focus sync for %d" % user_id)
-		self.sync_status[(user_id, guild_id)]["focus_info"] = True
+		self.sync_status[(user_id, guild_id)]["focus_info"]["telegram"] = True
 
 		if not self.sync.is_running():
 			self.sync.start()
@@ -687,7 +755,7 @@ class Twitter(commands.Cog):
 			return
 
 		logging.info("Toggle list sync for %d" % user_id)
-		self.sync_status[(user_id, guild_id)]["list_info"] = True
+		self.sync_status[(user_id, guild_id)]["list_info"]["telegram"] = True
 
 		if not self.sync.is_running():
 			self.sync.start()
@@ -706,7 +774,7 @@ class Twitter(commands.Cog):
 
 
 		logging.info("Toggle tl sync for %d" % user_id)
-		self.sync_status[(user_id, guild_id)]["timeline_info"] = True
+		self.sync_status[(user_id, guild_id)]["timeline_info"]["telegram"] = True
 
 		if not self.sync.is_running():
 			self.sync.start()
