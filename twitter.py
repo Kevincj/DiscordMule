@@ -209,8 +209,7 @@ class Twitter(commands.Cog):
 
 			if push_to_discord:
 				# logging.info("Pushing to discord channel...")
-				for media in media_list:
-					await push_to_discord.send(media[0][0])
+				await push_to_discord.send("%s\n||%s||" % ("\n".join(media_list), tweet_link))
 
 			if sync_to_telegram:
 
