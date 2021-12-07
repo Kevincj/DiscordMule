@@ -46,13 +46,13 @@ class Voice(commands.Cog):
 		self.spotify_artist_pattern = re.compile("^http.*//.*spotify.*artist.*/(.*)", re.IGNORECASE)
 		self.q_display_count = 5
 
-		self.loadTTS()
-		self.loadYDL()
-		self.loadSpotify()
+		self.load_tts()
+		self.load_ydl()
+		self.load_spotify()
 
 
 		
-	def loadTTS(self) -> None:
+	def load_tts(self) -> None:
 
 		logging.info("Loading TTS...")
 
@@ -73,7 +73,7 @@ class Voice(commands.Cog):
 
 
 
-	def loadYDL(self) -> None:
+	def load_ydl(self) -> None:
 
 		logging.info("Loading youtube_dl...")
 
@@ -85,7 +85,7 @@ class Voice(commands.Cog):
 
 
 
-	def loadSpotify(self) -> None:
+	def load_spotify(self) -> None:
 
 		logging.info("Setting up Spotify access...")
 		self.spotify = spotipy.Spotify(auth_manager=SpotifyClientCredentials(client_id=self.config["Spotify"]["ClientID"],
@@ -146,7 +146,7 @@ class Voice(commands.Cog):
 
 	# 	voice_client = utils.get(ctx.bot.voice_clients, guild = ctx.guild)
 
-	# 	if not self.inSameVoiceChannel(ctx.author.voice, ctx.voice_client):
+	# 	if not self.in_same_discord_channel(ctx.author.voice, ctx.voice_client):
 	# 		return await ctx.send("I'm not in your voice channel.")
 
 	# 	print(arg, type(arg))
@@ -207,25 +207,25 @@ class Voice(commands.Cog):
 		if not ctx.author.voice:
 			return await ctx.send("Please join a voice channel before running this command.")
 
-		if not self.inSameVoiceChannel(ctx.author.voice, ctx.voice_client):
+		if not self.in_same_discord_channel(ctx.author.voice, ctx.voice_client):
 			return await ctx.send("I'm not in your voice channel.")
 
 		# Match link patterns
 		if self.spotify_playlist_pattern.search(kw):
 			await ctx.send("Fetching songs from playlist...")
 			result = self.spotify_playlist_pattern.search(kw)
-			song_info = self.getSpotifyList(result.group(1))
+			song_info = self.get_spotify_list(result.group(1))
 
 		elif self.spotify_artist_pattern.search(kw):
 			await ctx.send("Fetching songs from artist...")
 			result = self.spotify_artist_pattern.search(kw)
-			song_info = self.getSpotifyArtist(result.group(1))
+			song_info = self.get_spotify_artist(result.group(1))
 
 		elif self.link_pattern.match(kw):
-			song_info = self.getSongFromUrl(kw)
+			song_info = self.get_song_from_url(kw)
 
 		else:
-			song_info = self.getSongInfo(kw)
+			song_info = self.get_song_info(kw)
 
 
 		# Invalid request
@@ -261,7 +261,7 @@ class Voice(commands.Cog):
 
 			song_info = self.play_states[guild.id]["queue"].pop(0)
 			if not song_info["url"]:
-				song_info = self.getSongInfo(song_info["title"])
+				song_info = self.get_song_info(song_info["title"])
 
 			self.play_states[guild.id]["playing"] = True
 			self.play_states[guild.id]["current"] = song_info
@@ -282,7 +282,7 @@ class Voice(commands.Cog):
 
 			song_info = self.play_states[guild.id]["queue"].pop(0)
 			if not song_info["url"]:
-				song_info = self.getSongInfo(song_info["title"])
+				song_info = self.get_song_info(song_info["title"])
 
 			self.play_states[guild.id]["playing"] = True
 
@@ -309,7 +309,7 @@ class Voice(commands.Cog):
 
 			song_info = self.play_states[guild.id]["queue"].pop(0)
 			if not song_info["url"]:
-				song_info = self.getSongInfo(song_info["title"])
+				song_info = self.get_song_info(song_info["title"])
 
 			self.play_states[guild.id]["playing"] = True
 
@@ -360,7 +360,7 @@ class Voice(commands.Cog):
 
 
 
-	def getSpotifyArtist(self, list_id: str) -> list:
+	def get_spotify_artist(self, list_id: str) -> list:
 
 		try:
 			results = self.spotify.artist_top_tracks(list_id)
@@ -377,7 +377,7 @@ class Voice(commands.Cog):
 
 
 
-	def getSpotifyList(self, list_id: str) -> list:
+	def get_spotify_list(self, list_id: str) -> list:
 
 		try:
 			results = self.spotify.playlist(list_id)
@@ -393,9 +393,9 @@ class Voice(commands.Cog):
 
 
 
-	def getSongInfo(self, keyword: str) -> dict:
+	def get_song_info(self, keyword: str) -> dict:
 
-		if not self.ydl: self.loadYDL()
+		if not self.ydl: self.load_ydl()
 
 		try:
 			result = self.ydl.extract_info("ytsearch:%s" % keyword, download=False)["entries"][0]
@@ -406,9 +406,9 @@ class Voice(commands.Cog):
 
 
 
-	def getSongFromUrl(self, url: str) -> dict:
+	def get_song_from_url(self, url: str) -> dict:
 
-		if not self.ydl: self.loadYDL()
+		if not self.ydl: self.load_ydl()
 
 		try:
 			result = self.ydl.extract_info(url, download=False)
@@ -419,7 +419,7 @@ class Voice(commands.Cog):
 
 
 
-	def inSameVoiceChannel(self, author_voice_state: discord.VoiceState, bot_voice_client: discord.VoiceClient)-> bool:
+	def in_same_discord_channel(self, author_voice_state: discord.VoiceState, bot_voice_client: discord.VoiceClient)-> bool:
 
 		return author_voice_state.channel and bot_voice_client and author_voice_state.channel == bot_voice_client.channel
 

@@ -32,10 +32,10 @@ class TelegramBot(commands.Cog):
 
 	@commands.Cog.listener() 
 	async def on_ready(self):
-		await self.updateSyncStatus()
+		await self.update_sync_status()
 
 
-	async def updateSyncStatus(self):
+	async def update_sync_status(self):
 		sync_needed = False
 		for entry in self.db["telegram_info"].find({}): 
 			# logging.info(entry)
@@ -170,7 +170,7 @@ class TelegramBot(commands.Cog):
 
 
 
-	def getTelegramChannel(self, user_id: str, guild_id: str, channel_type: str):
+	def get_telegram_channel(self, user_id: str, guild_id: str, channel_type: str):
 
 
 		if (user_id, guild_id) in self.telegram_cache.keys():
@@ -197,20 +197,20 @@ class TelegramBot(commands.Cog):
 
 
 
-	async def sendMedias(self, author_id: str, guild_id: str, medias: list, tweet_info: str, channel_type = None):
+	async def send_medias(self, author_id: str, guild_id: str, medias: list, tweet_info: str, channel_type = None):
 
 		if len(medias) == 0: return
 
 		if channel_type == "timeline_info":
-			target_channel = self.getTelegramChannel(author_id, guild_id, "tl_channel")
+			target_channel = self.get_telegram_channel(author_id, guild_id, "tl_channel")
 		elif channel_type == "like_info":
-			target_channel = self.getTelegramChannel(author_id, guild_id, "like_channel")
+			target_channel = self.get_telegram_channel(author_id, guild_id, "like_channel")
 		elif channel_type == "list_info":
-			target_channel = self.getTelegramChannel(author_id, guild_id, "list_channel")
+			target_channel = self.get_telegram_channel(author_id, guild_id, "list_channel")
 		elif channel_type == "focus_info":
-			target_channel = self.getTelegramChannel(author_id, guild_id, "focus_channel")
+			target_channel = self.get_telegram_channel(author_id, guild_id, "focus_channel")
 		elif channel_type == "self_like_info":
-			target_channel = self.getTelegramChannel(author_id, guild_id, "self_like_channel")
+			target_channel = self.get_telegram_channel(author_id, guild_id, "self_like_channel")
 		else:
 			return
 
@@ -258,7 +258,7 @@ class TelegramBot(commands.Cog):
 			while medias:
 				media_list = [medias[0]]
 				try:
-					await self.sendMedias(author_id, guild_id, [media_list], tweet_info, channel_type)
+					await self.send_medias(author_id, guild_id, [media_list], tweet_info, channel_type)
 					medias.pop(0)
 				except aiogram.utils.exceptions.RetryAfter as err:
 					logging.error("Try again in %d seconds." % err.timeout)
