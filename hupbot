@@ -1,4 +1,11 @@
 #! /bin/bash
-source ~/ENVIRONMENTS/discord_env/bin/activate
+#!/bin/bash
+set -e
+if grep -qEi "(Microsoft|WSL)" /proc/version &> /dev/null ; then
+    source /mnt/d/solutions/ENVIRONMENTS/discord_env/bin/activate
+else
+    source ~/ENVIRONMENTS/discord_env/bin/activate
+fi
+
 nohup python bot.py > bot.log 2>&1 &
 echo $! > bot.pid

@@ -5,3 +5,5 @@ bot.conf
 activate.bat
 tmp.mp3
 *.bat
+bot.pid
+*.log
