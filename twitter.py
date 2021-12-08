@@ -647,7 +647,7 @@ class Twitter(commands.Cog):
 			return
 
 		logging.info("Toggle focus sync for %s" % user_id)
-		self.sync_status[(user_id, guild_id)][sync_type]["discord"] = ctx
+		self.sync_status[(user_id, guild_id)][sync_type][target] = ctx
 
 		if not self.sync.is_running():
 			self.sync.start()
