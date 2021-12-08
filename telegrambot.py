@@ -38,21 +38,18 @@ class TelegramBot(commands.Cog):
 	async def update_sync_status(self):
 		sync_needed = False
 		for entry in self.db["telegram_info"].find({}): 
-			# logging.info(entry)
 			if entry["tl_channel"]:
 				self.bot.get_cog("Twitter").sync_status[(entry["user_id"], entry["guild_id"])]["timeline_info"]["telegram"] = True
-				# logging.info(self.bot.get_cog("Twitter").sync_status[(entry["user_id"], entry["guild_id"])])
 				sync_needed = True
 			if entry["self_like_channel"]:
 				self.bot.get_cog("Twitter").sync_status[(entry["user_id"], entry["guild_id"])]["self_like_info"]["telegram"] = True
-				# logging.info(self.bot.get_cog("Twitter").sync_status[(entry["user_id"], entry["guild_id"])])
 				sync_needed = True
 			if entry["focus_channel"]:
 				self.bot.get_cog("Twitter").sync_status[(entry["user_id"], entry["guild_id"])]["focus_info"]["telegram"] = True
 				sync_needed = True
-			# if entry["list_channel"]:
-			# 	self.bot.get_cog("Twitter").sync_status[(entry["user_id"], entry["guild_id"])]["list_info"]["telegram"] = True
-			# 	sync_needed = True
+			if entry["list_channel"]:
+				self.bot.get_cog("Twitter").sync_status[(entry["user_id"], entry["guild_id"])]["list_info"]["telegram"] = True
+				sync_needed = True
 			if entry["like_channel"]:
 				self.bot.get_cog("Twitter").sync_status[(entry["user_id"], entry["guild_id"])]["like_info"]["telegram"] = True
 				sync_needed = True

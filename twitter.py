@@ -174,6 +174,7 @@ class Twitter(commands.Cog):
 
 		current_id = None
 
+
 		for tweet in tweets:
 				
 			re_result = self.url_pattern.search(tweet.text)
@@ -262,6 +263,7 @@ class Twitter(commands.Cog):
 		:return: None
 		'''
 		MAX_DISCORD_COUNT, MAX_TELEGRAM_COUNT = 50, 200
+		MAX_LIKE_QUERY_COUNT = 200
 
 		if not (push_to_discord or sync_to_telegram): return
 
@@ -419,21 +421,25 @@ class Twitter(commands.Cog):
 					
 					max_count = MAX_DISCORD_COUNT if push_to_discord else MAX_TELEGRAM_COUNT
 
-					if reverse and min_id > 0:
-						update_min = True
-						tweets = list(tweepy.Cursor(api.get_favorites, max_id = min_id - 1, count= max_count).items())
-					elif (not reverse) and max_id > 0:
+					# if reverse and min_id > 0:
+					# 	update_min = True
+					# 	tweets = list(tweepy.Cursor(api.get_favorites, screen_name = user_name, count= max_count).items())
+					if (not reverse) and max_id > 0:
 						update_max = True
-						tweets = list(tweepy.Cursor(api.get_favorites, since_id = max_id, count= max_count).items())
+						tweets = list(tweepy.Cursor(api.get_favorites, screen_name = user_name, count= max_count).items(MAX_LIKE_QUERY_COUNT))
+						id_list = [tweet.id for tweet in tweets]
+						if max_id in id_list:
+							tweets = tweets[:id_list.index(max_id)]
+						else:
+							tweets = list(tweepy.Cursor(api.get_favorites, screen_name = user_name, count= max_count).items())
 					else:
 						update_max = True
-						tweets = list(tweepy.Cursor(api.get_favorites, count= max_count).items())
+						tweets = list(tweepy.Cursor(api.get_favorites, screen_name = user_name, count= max_count).items())
 
 						if len(tweets) > 0:
 							query_result = self.query_twitter_info(user_id, guild_id, category)
 							self.db["twitter_info"].update_one(query_result, {"$set": {
-								"%s.%s.min_sync_id" % (category, user_name): tweets[-1].id-1,
-								"%s.%s.max_sync_id" % (category, user_name): tweets[-1].id-1}})
+								"%s.%s.min_sync_id" % (category, user_name): tweets[-1].id}})
 
 					if len(tweets) == 0: 
 						logging.info("Nothing fetched, continue.")
@@ -441,7 +447,7 @@ class Twitter(commands.Cog):
 
 					logging.info("Fetched %d tweets" % len(tweets))
 
-					if not reverse: tweets = tweets[::-1]
+					tweets = tweets[::-1]
 
 					await self.push_tweets(tweets, user_id, guild_id, category, user_name, update_min, update_max, push_to_discord, sync_to_telegram)
 		
@@ -460,12 +466,17 @@ class Twitter(commands.Cog):
 				
 				max_count = MAX_DISCORD_COUNT if push_to_discord else MAX_TELEGRAM_COUNT
 
-				if reverse and min_id > 0:
-					update_min = True
-					tweets = list(tweepy.Cursor(api.get_favorites, max_id = min_id - 1, count= max_count).items())
-				elif (not reverse) and max_id > 0:
+				# if reverse and min_id > 0:
+				# 	update_min = True
+				# 	tweets = list(tweepy.Cursor(api.get_favorites, count= max_count).items(MAX_LIKE_QUERY_COUNT))
+				if (not reverse) and max_id > 0:
 					update_max = True
-					tweets = list(tweepy.Cursor(api.get_favorites, since_id = max_id, count= max_count).items())
+					tweets = list(tweepy.Cursor(api.get_favorites, count= max_count).items(MAX_LIKE_QUERY_COUNT))
+					id_list = [tweet.id for tweet in tweets]
+					if max_id in id_list:
+						tweets = tweets[:id_list.index(max_id)]
+					else:
+						tweets = list(tweepy.Cursor(api.get_favorites, count= max_count).items())
 				else:
 					update_max = True
 					tweets = list(tweepy.Cursor(api.get_favorites, count= max_count).items())
@@ -473,16 +484,15 @@ class Twitter(commands.Cog):
 					if len(tweets) > 0:
 						query_result = self.query_twitter_info(user_id, guild_id, category)
 						self.db["twitter_info"].update_one(query_result, {"$set": {
-							"%s.max_sync_id" % category: tweets[-1].id-1,
-							"%s.min_sync_id" % category: tweets[-1].id-1}})
+							"%s.min_sync_id" % category: tweets[-1].id}})
 
 				if len(tweets) == 0: 
 					logging.info("Nothing fetched, continue.")
 					return
 
 				logging.info("Fetched %d tweets" % len(tweets))
-				print(tweets[0].id)
-				if not reverse: tweets = tweets[::-1]
+				# print(tweets[0].id)
+				tweets = tweets[::-1]
 
 				await self.push_tweets(tweets, user_id, guild_id, category, None, update_min, update_max, push_to_discord, sync_to_telegram)
 		
