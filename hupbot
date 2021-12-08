@@ -1,5 +1,4 @@
 #! /bin/bash
-#!/bin/bash
 set -e
 if grep -qEi "(Microsoft|WSL)" /proc/version &> /dev/null ; then
     source /mnt/d/solutions/ENVIRONMENTS/discord_env/bin/activate
