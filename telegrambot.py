@@ -47,12 +47,12 @@ class TelegramBot(commands.Cog):
 			if entry["focus_channel"]:
 				self.bot.get_cog("Twitter").sync_status[(entry["user_id"], entry["guild_id"])]["focus_info"]["telegram"] = True
 				sync_needed = True
-			if entry["list_channel"]:
-				self.bot.get_cog("Twitter").sync_status[(entry["user_id"], entry["guild_id"])]["list_info"]["telegram"] = True
-				sync_needed = True
 			if entry["like_channel"]:
 				self.bot.get_cog("Twitter").sync_status[(entry["user_id"], entry["guild_id"])]["like_info"]["telegram"] = True
 				sync_needed = True
+			# if entry["list_channel"]:
+			# 	self.bot.get_cog("Twitter").sync_status[(entry["user_id"], entry["guild_id"])]["list_info"]["telegram"] = True
+			# 	sync_needed = True
 
 		if sync_needed: 
 			await self.bot.get_cog("Twitter").sync.start()
@@ -211,18 +211,19 @@ class TelegramBot(commands.Cog):
 		else:
 			return
 
-		# logging.info("Target channel: %s" % target_channel)
+		logging.info("Sending to: %s" % target_channel)
 		
 		if len(medias) == 1:
-			for j in range(len(medias)-1,-1,-1):
-				media, isVideo = medias[0][j]
+			media_list = medias[0]
+			for j in range(len(media_list)-1,-1,-1):
+				media, isVideo = media_list[j]
 				try:
 					if isVideo:
 						await self.tel_bot.send_video(chat_id="@"+target_channel, video=media, caption = tweet_info)
 					else:
 						await self.tel_bot.send_photo(chat_id="@"+target_channel, photo=media, caption = tweet_info)
 				except aiogram.utils.exceptions.BadRequest as err:
-					# logging.error("Bad Request: %s" % media)
+					logging.error("Bad Request: %s" % media)
 					continue
 				except asyncio.TimeoutError:
 					# logging.error("Timeout. Passed.")
