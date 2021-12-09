@@ -211,7 +211,7 @@ class Twitter(commands.Cog):
 			if push_to_discord:
 				tweet_ct += 1
 				# logging.info("Pushing to discord channel...")
-				logging.info(media_list)
+				# logging.info(media_list)
 				await push_to_discord.send("%s\n|%s||" % ("\n".join([m[0][0] for m in media_list]), tweet_link))
 				await asyncio.sleep(1)
 
@@ -642,7 +642,7 @@ class Twitter(commands.Cog):
 		author, guild = ctx.message.author, ctx.guild
 		user_id, guild_id = str(author.id), str(guild.id)
 
-		await self.get_tweets(user_id, guild_id, sync_type, ctx, push_to_discord= True)
+		await self.get_tweets(user_id, guild_id, sync_type, ctx, push_to_discord= ctx)
 
 	@commands.command(pass_context=True, help="grab medias from your Twitter timeline")
 	async def getTimeline(self, ctx: commands.Context):
