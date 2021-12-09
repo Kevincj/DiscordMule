@@ -264,7 +264,7 @@ class Twitter(commands.Cog):
 		:reverse: retrieving strategy for the next api call. Default: retrieving the latest tweets (reverse = false)
 		:return: None
 		'''
-		MAX_DISCORD_COUNT, MAX_TELEGRAM_COUNT = 50, 200
+		MAX_DISCORD_COUNT, MAX_TELEGRAM_COUNT = 200, 200
 		MAX_LIKE_QUERY_COUNT = 200
 
 		if not (push_to_discord or sync_to_telegram): return
@@ -296,6 +296,8 @@ class Twitter(commands.Cog):
 					
 					max_count = MAX_DISCORD_COUNT if push_to_discord else MAX_TELEGRAM_COUNT
 
+					print(max_id, min_id)
+
 					if reverse and min_id > 0:
 						update_min = True
 						tweets = list(tweepy.Cursor(api.home_timeline, max_id = min_id - 1, count= max_count, exclude_replies = True).items())
@@ -304,7 +306,13 @@ class Twitter(commands.Cog):
 						tweets = list(tweepy.Cursor(api.home_timeline, since_id = max_id, count= max_count, exclude_replies = True).items())
 					else:
 						update_max = True
-						tweets = list(tweepy.Cursor(api.home_timeline, count= max_count, exclude_replies = True).items())
+						while True:
+							try:
+								tweets = list(tweepy.Cursor(api.home_timeline, count= max_count, exclude_replies = True).items())
+								break
+							except tweepy.errors.TooManyRequests:
+								logging.info("Too Many Requests, wait 15 mins.")
+								await asyncio.sleep(15*60)
 
 						if len(tweets) > 0:
 							if push_to_discord:
@@ -639,25 +647,25 @@ class Twitter(commands.Cog):
 	@commands.command(pass_context=True, help="grab medias from your Twitter timeline")
 	async def getTimeline(self, ctx: commands.Context):
 
-		self.get_tweets_once(ctx, "timeline_info")
+		await self.get_tweets_once(ctx, "timeline_info")
 
 	@commands.command(pass_context=True, help="grab medias from your Twitter focused users")
 	async def getFocus(self, ctx: commands.Context):
 		
-		self.get_tweets_once(ctx, "focus_info")
+		await self.get_tweets_once(ctx, "focus_info")
 
 
 	@commands.command(pass_context=True, help="grab medias from your Twitter lists")
 	async def getList(self, ctx: commands.Context):
 		
-		self.get_tweets_once(ctx, "list_info")
+		await self.get_tweets_once(ctx, "list_info")
 
 		
 
 	@commands.command(pass_context=True, help="grab medias from likes from target users")
 	async def getLike(self, ctx: commands.Context):
 		
-		self.get_tweets_once(ctx, "like_info")
+		await self.get_tweets_once(ctx, "like_info")
 
 		
 
