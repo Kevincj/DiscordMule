@@ -6,5 +6,7 @@ else
     source ~/ENVIRONMENTS/discord_env/bin/activate
 fi
 
-nohup python bot.py > bot.log 2>&1 &
+for file in dm*.log; do mv "$file" "past_$file"; done;
+
+nohup python bot.py > dm_$(date +%Y%m%d_%H%M%S).log 2>&1 &
 echo $! > bot.pid
