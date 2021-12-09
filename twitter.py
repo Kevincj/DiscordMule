@@ -209,8 +209,11 @@ class Twitter(commands.Cog):
 			# logging.info("Medias: %s" % media_list)
 
 			if push_to_discord:
+				tweet_ct += 1
 				# logging.info("Pushing to discord channel...")
-				await push_to_discord.send("%s\n||%s||" % ("\n".join(media_list), tweet_link))
+				logging.info(media_list)
+				await push_to_discord.send("%s\n|%s||" % ("\n".join([m[0][0] for m in media_list]), tweet_link))
+				await asyncio.sleep(1)
 
 			if sync_to_telegram:
 
@@ -247,7 +250,6 @@ class Twitter(commands.Cog):
 		if current_id:
 			self.update_database(user_id, guild_id, category, current_id, push_to_discord, sync_to_telegram, update_min, update_max, sub_category)
 
-		await asyncio.sleep(15)
 
 
 	async def get_tweets(self, user_id: str, guild_id: str, category: str, ctx: commands.Context = None, push_to_discord: bool = False, sync_to_telegram: bool = False, reverse: bool = False):
@@ -276,142 +278,214 @@ class Twitter(commands.Cog):
 			# await ctx.send("Twitter connection failed, please reconnect your Twitter account.")
 			return
 
+		try:
+			match category:
+				case "timeline_info":
+					logging.info("Acquiring timeline...")
+					query_result = self.query_twitter_info(user_id, guild_id, category)
 
-		match category:
-			case "timeline_info":
-				logging.info("Acquiring timeline...")
-				query_result = self.query_twitter_info(user_id, guild_id, category)
-
-				update_max, update_min = False, False
-
-				if push_to_discord:
-					max_id = query_result[category]["max_id"]
-					min_id = query_result[category]["min_id"]
-
-				else:
-					max_id = query_result[category]["max_sync_id"]
-					min_id = query_result[category]["min_sync_id"]
-				
-				max_count = MAX_DISCORD_COUNT if push_to_discord else MAX_TELEGRAM_COUNT
-
-				if reverse and min_id > 0:
-					update_min = True
-					tweets = list(tweepy.Cursor(api.home_timeline, max_id = min_id - 1, count= max_count, exclude_replies = True).items())
-				elif (not reverse) and max_id > 0:
-					update_max = True
-					tweets = list(tweepy.Cursor(api.home_timeline, since_id = max_id, count= max_count, exclude_replies = True).items())
-				else:
-					update_max = True
-					tweets = list(tweepy.Cursor(api.home_timeline, count= max_count, exclude_replies = True).items())
-
-					if len(tweets) > 0:
-						query_result = self.query_twitter_info(user_id, guild_id, category)
-						self.db["twitter_info"].update_one(query_result, {"$set": {
-							"%s.max_sync_id" % category: tweets[-1].id-1,
-							"%s.min_sync_id" % category: tweets[-1].id-1}})
-
-
-				if len(tweets) == 0: 
-					logging.info("Nothing fetched, continue.")
-					exit()
-
-				logging.info("Fetched %d tweets" % len(tweets))
-
-				if not reverse: tweets = tweets[::-1]
-
-				await self.push_tweets(tweets, user_id, guild_id, category, None, update_min, update_max, push_to_discord, sync_to_telegram)
-
-			case "focus_info":
-				logging.info("Acquiring focused users...")
-				query_result = self.query_twitter_info(user_id, guild_id, category)
-
-				update_max, update_min = False, False
-				# print(query_result[category])
-				for user_name, sync_info in query_result[category].items():
+					update_max, update_min = False, False
 
 					if push_to_discord:
-						max_id, min_id = sync_info["max_id"], sync_info["min_id"]
+						max_id = query_result[category]["max_id"]
+						min_id = query_result[category]["min_id"]
 
-					elif sync_to_telegram:
-						max_id, min_id = sync_info["max_sync_id"], sync_info["min_sync_id"]
-					max_count = MAX_DISCORD_COUNT if push_to_discord else MAX_TELEGRAM_COUNT
-
-					if reverse and min_id > 0:
-						update_min = True
-						tweets = list(tweepy.Cursor(api.user_timeline, screen_name = user_name, max_id = min_id - 1, count= max_count, exclude_replies = True).items())
-					elif (not reverse) and max_id > 0:
-						update_max = True
-						tweets = list(tweepy.Cursor(api.user_timeline, screen_name = user_name, since_id = max_id, count= max_count, exclude_replies = True).items())
 					else:
-						update_max = True
-						tweets = list(tweepy.Cursor(api.user_timeline, screen_name = user_name, count= max_count, exclude_replies = True).items())
-
-						if len(tweets) > 0:
-							query_result = self.query_twitter_info(user_id, guild_id, category)
-							self.db["twitter_info"].update_one(query_result, {"$set": {
-								"%s.%s.min_sync_id" % (category, user_name): tweets[-1].id-1,
-								"%s.%s.max_sync_id" % (category, user_name): tweets[-1].id-1}})
-
-					if len(tweets) == 0: 
-						logging.info("Nothing fetched, continue.")
-						continue
-
-					logging.info("Fetched %d tweets" % len(tweets))
-
-					if not reverse: tweets = tweets[::-1]
-
-					await self.push_tweets(tweets, user_id, guild_id, category, user_name, update_min, update_max, push_to_discord, sync_to_telegram)
-		
-
-			case "list_info":
-				logging.info("Acquiring list statuses...")
-				query_result = self.query_twitter_info(user_id, guild_id, category)
-
-				update_max, update_min = False, False
-				# print(query_result[category])
-				for list_id, sync_info in query_result[category].items():
-
-					if push_to_discord:
-						max_id, min_id = sync_info["max_id"], sync_info["min_id"]
-
-					elif sync_to_telegram:
-						max_id, min_id = sync_info["max_sync_id"], sync_info["min_sync_id"]
+						max_id = query_result[category]["max_sync_id"]
+						min_id = query_result[category]["min_sync_id"]
 					
 					max_count = MAX_DISCORD_COUNT if push_to_discord else MAX_TELEGRAM_COUNT
 
 					if reverse and min_id > 0:
 						update_min = True
-						tweets = list(tweepy.Cursor(api.list_timeline, list_id = list_id, max_id = min_id - 1, count= max_count).items())
+						tweets = list(tweepy.Cursor(api.home_timeline, max_id = min_id - 1, count= max_count, exclude_replies = True).items())
 					elif (not reverse) and max_id > 0:
 						update_max = True
-						tweets = list(tweepy.Cursor(api.list_timeline, list_id = list_id, since_id = max_id, count= max_count).items())
+						tweets = list(tweepy.Cursor(api.home_timeline, since_id = max_id, count= max_count, exclude_replies = True).items())
 					else:
 						update_max = True
-						tweets = list(tweepy.Cursor(api.list_timeline, list_id = list_id, count= max_count).items())
+						tweets = list(tweepy.Cursor(api.home_timeline, count= max_count, exclude_replies = True).items())
 
 						if len(tweets) > 0:
-							query_result = self.query_twitter_info(user_id, guild_id, category)
-							self.db["twitter_info"].update_one(query_result, {"$set": {
-								"%s.%s.min_sync_id" % (category, list_id): tweets[-1].id-1,
-								"%s.%s.max_sync_id" % (category, list_id): tweets[-1].id-1}})
+							if push_to_discord:
+								query_result = self.query_twitter_info(user_id, guild_id, category)
+								self.db["twitter_info"].update_one(query_result, {"$set": {
+									"%s.max_id" % category: tweets[-1].id-1,
+									"%s.min_id" % category: tweets[-1].id-1}})
+							elif sync_to_telegram:
+								query_result = self.query_twitter_info(user_id, guild_id, category)
+								self.db["twitter_info"].update_one(query_result, {"$set": {
+									"%s.max_sync_id" % category: tweets[-1].id-1,
+									"%s.min_sync_id" % category: tweets[-1].id-1}})
+
 
 					if len(tweets) == 0: 
 						logging.info("Nothing fetched, continue.")
-						continue
+						exit()
 
 					logging.info("Fetched %d tweets" % len(tweets))
 
 					if not reverse: tweets = tweets[::-1]
 
-					await self.push_tweets(tweets, user_id, guild_id, category, list_id, update_min, update_max, push_to_discord, sync_to_telegram)
-		
-			case "like_info":
-				logging.info("Acquiring like statuses...")
-				query_result = self.query_twitter_info(user_id, guild_id, category)
+					await self.push_tweets(tweets, user_id, guild_id, category, None, update_min, update_max, push_to_discord, sync_to_telegram)
 
-				update_max, update_min = False, False
-				# print(query_result[category])
-				for user_name, sync_info in query_result[category].items():
+				case "focus_info":
+					query_result = self.query_twitter_info(user_id, guild_id, category)
+
+					update_max, update_min = False, False
+					# print(query_result[category])
+					for user_name, sync_info in query_result[category].items():
+						await asyncio.sleep(15)
+
+						logging.info("Acquiring focused users %s..." % user_name)
+						if push_to_discord:
+							max_id, min_id = sync_info["max_id"], sync_info["min_id"]
+
+						elif sync_to_telegram:
+							max_id, min_id = sync_info["max_sync_id"], sync_info["min_sync_id"]
+						max_count = MAX_DISCORD_COUNT if push_to_discord else MAX_TELEGRAM_COUNT
+
+						if reverse and min_id > 0:
+							update_min = True
+							tweets = list(tweepy.Cursor(api.user_timeline, screen_name = user_name, max_id = min_id - 1, count= max_count, exclude_replies = True).items())
+						elif (not reverse) and max_id > 0:
+							update_max = True
+							tweets = list(tweepy.Cursor(api.user_timeline, screen_name = user_name, since_id = max_id, count= max_count, exclude_replies = True).items())
+						else:
+							update_max = True
+							tweets = list(tweepy.Cursor(api.user_timeline, screen_name = user_name, count= max_count, exclude_replies = True).items())
+
+							if len(tweets) > 0:
+								if push_to_discord:
+									query_result = self.query_twitter_info(user_id, guild_id, category)
+									self.db["twitter_info"].update_one(query_result, {"$set": {
+										"%s.%s.min_id" % (category, user_name): tweets[-1].id-1,
+										"%s.%s.max_id" % (category, user_name): tweets[-1].id-1}})
+								elif sync_to_telegram:
+									query_result = self.query_twitter_info(user_id, guild_id, category)
+									self.db["twitter_info"].update_one(query_result, {"$set": {
+										"%s.%s.min_sync_id" % (category, user_name): tweets[-1].id-1,
+										"%s.%s.max_sync_id" % (category, user_name): tweets[-1].id-1}})
+
+						if len(tweets) == 0: 
+							logging.info("Nothing fetched, continue.")
+							continue
+
+						logging.info("Fetched %d tweets" % len(tweets))
+
+						if not reverse: tweets = tweets[::-1]
+
+						await self.push_tweets(tweets, user_id, guild_id, category, user_name, update_min, update_max, push_to_discord, sync_to_telegram)
+			
+
+				case "list_info":
+					query_result = self.query_twitter_info(user_id, guild_id, category)
+
+					update_max, update_min = False, False
+					# print(query_result[category])
+					for list_id, sync_info in query_result[category].items():
+						await asyncio.sleep(15)
+						logging.info("Acquiring list statuses %s..." % list_id)
+						if push_to_discord:
+							max_id, min_id = sync_info["max_id"], sync_info["min_id"]
+
+						elif sync_to_telegram:
+							max_id, min_id = sync_info["max_sync_id"], sync_info["min_sync_id"]
+						
+						max_count = MAX_DISCORD_COUNT if push_to_discord else MAX_TELEGRAM_COUNT
+
+						if reverse and min_id > 0:
+							update_min = True
+							tweets = list(tweepy.Cursor(api.list_timeline, list_id = list_id, max_id = min_id - 1, count= max_count).items())
+						elif (not reverse) and max_id > 0:
+							update_max = True
+							tweets = list(tweepy.Cursor(api.list_timeline, list_id = list_id, since_id = max_id, count= max_count).items())
+						else:
+							update_max = True
+							tweets = list(tweepy.Cursor(api.list_timeline, list_id = list_id, count= max_count).items())
+
+							if len(tweets) > 0:
+								if push_to_discord:
+									query_result = self.query_twitter_info(user_id, guild_id, category)
+									self.db["twitter_info"].update_one(query_result, {"$set": {
+										"%s.%s.min_id" % (category, list_id): tweets[-1].id-1,
+										"%s.%s.max_id" % (category, list_id): tweets[-1].id-1}})
+								elif sync_to_telegram:
+									query_result = self.query_twitter_info(user_id, guild_id, category)
+									self.db["twitter_info"].update_one(query_result, {"$set": {
+										"%s.%s.min_sync_id" % (category, list_id): tweets[-1].id-1,
+										"%s.%s.max_sync_id" % (category, list_id): tweets[-1].id-1}})
+
+						if len(tweets) == 0: 
+							logging.info("Nothing fetched, continue.")
+							continue
+
+						logging.info("Fetched %d tweets" % len(tweets))
+
+						if not reverse: tweets = tweets[::-1]
+
+						await self.push_tweets(tweets, user_id, guild_id, category, list_id, update_min, update_max, push_to_discord, sync_to_telegram)
+			
+				case "like_info":
+					query_result = self.query_twitter_info(user_id, guild_id, category)
+
+					update_max, update_min = False, False
+					# print(query_result[category])
+					for user_name, sync_info in query_result[category].items():
+						await asyncio.sleep(15)	
+						logging.info("Acquiring like statuses %s..." % user_name)
+						if push_to_discord:
+							max_id, min_id = sync_info["max_id"], sync_info["min_id"]
+
+						elif sync_to_telegram:
+							max_id, min_id = sync_info["max_sync_id"], sync_info["min_sync_id"]
+						
+						max_count = MAX_DISCORD_COUNT if push_to_discord else MAX_TELEGRAM_COUNT
+
+						# if reverse and min_id > 0:
+						# 	update_min = True
+						# 	tweets = list(tweepy.Cursor(api.get_favorites, screen_name = user_name, count= max_count).items())
+						if (not reverse) and max_id > 0:
+							update_max = True
+							tweets = list(tweepy.Cursor(api.get_favorites, screen_name = user_name, count= max_count).items(MAX_LIKE_QUERY_COUNT))
+							id_list = [tweet.id for tweet in tweets]
+							if max_id in id_list:
+								tweets = tweets[:id_list.index(max_id)]
+							else:
+								tweets = list(tweepy.Cursor(api.get_favorites, screen_name = user_name, count= max_count).items())
+								id_list = [tweet.id for tweet in tweets]
+								if max_id in id_list:
+									tweets = tweets[:id_list.index(max_id)]
+						else:
+							update_max = True
+							tweets = list(tweepy.Cursor(api.get_favorites, screen_name = user_name, count= max_count).items())
+
+							if len(tweets) > 0:
+								if push_to_discord:
+									query_result = self.query_twitter_info(user_id, guild_id, category)
+									self.db["twitter_info"].update_one(query_result, {"$set": {
+										"%s.%s.min_id" % (category, user_name): tweets[-1].id}})
+								elif sync_to_telegram:
+									query_result = self.query_twitter_info(user_id, guild_id, category)
+									self.db["twitter_info"].update_one(query_result, {"$set": {
+										"%s.%s.min_sync_id" % (category, user_name): tweets[-1].id}})
+
+						if len(tweets) == 0: 
+							logging.info("Nothing fetched, continue.")
+							continue
+
+						logging.info("Fetched %d tweets" % len(tweets))
+
+						tweets = tweets[::-1]
+
+						await self.push_tweets(tweets, user_id, guild_id, category, user_name, update_min, update_max, push_to_discord, sync_to_telegram)
+			
+				case "self_like_info":
+					logging.info("Acquiring selflike statuses...")
+					query_result = self.query_twitter_info(user_id, guild_id, category)
+
+					update_max, update_min = False, False
+					sync_info = query_result[category]
 
 					if push_to_discord:
 						max_id, min_id = sync_info["max_id"], sync_info["min_id"]
@@ -423,78 +497,44 @@ class Twitter(commands.Cog):
 
 					# if reverse and min_id > 0:
 					# 	update_min = True
-					# 	tweets = list(tweepy.Cursor(api.get_favorites, screen_name = user_name, count= max_count).items())
+					# 	tweets = list(tweepy.Cursor(api.get_favorites, count= max_count).items(MAX_LIKE_QUERY_COUNT))
 					if (not reverse) and max_id > 0:
 						update_max = True
-						tweets = list(tweepy.Cursor(api.get_favorites, screen_name = user_name, count= max_count).items(MAX_LIKE_QUERY_COUNT))
+						tweets = list(tweepy.Cursor(api.get_favorites, count= max_count).items(MAX_LIKE_QUERY_COUNT))
 						id_list = [tweet.id for tweet in tweets]
 						if max_id in id_list:
 							tweets = tweets[:id_list.index(max_id)]
 						else:
-							tweets = list(tweepy.Cursor(api.get_favorites, screen_name = user_name, count= max_count).items())
+							tweets = list(tweepy.Cursor(api.get_favorites, count= max_count).items())
+							id_list = [tweet.id for tweet in tweets]
+							if max_id in id_list:
+								tweets = tweets[:id_list.index(max_id)]
 					else:
 						update_max = True
-						tweets = list(tweepy.Cursor(api.get_favorites, screen_name = user_name, count= max_count).items())
+						tweets = list(tweepy.Cursor(api.get_favorites, count= max_count).items())
 
 						if len(tweets) > 0:
-							query_result = self.query_twitter_info(user_id, guild_id, category)
-							self.db["twitter_info"].update_one(query_result, {"$set": {
-								"%s.%s.min_sync_id" % (category, user_name): tweets[-1].id}})
+							if push_to_discord:
+								query_result = self.query_twitter_info(user_id, guild_id, category)
+								self.db["twitter_info"].update_one(query_result, {"$set": {
+									"%s.min_id" % category: tweets[-1].id}})
+							elif sync_to_telegram:
+								query_result = self.query_twitter_info(user_id, guild_id, category)
+								self.db["twitter_info"].update_one(query_result, {"$set": {
+									"%s.min_sync_id" % category: tweets[-1].id}})
 
 					if len(tweets) == 0: 
 						logging.info("Nothing fetched, continue.")
-						continue
+						return
 
 					logging.info("Fetched %d tweets" % len(tweets))
-
+					# print(tweets[0].id)
 					tweets = tweets[::-1]
 
-					await self.push_tweets(tweets, user_id, guild_id, category, user_name, update_min, update_max, push_to_discord, sync_to_telegram)
-		
-			case "self_like_info":
-				logging.info("Acquiring selflike statuses...")
-				query_result = self.query_twitter_info(user_id, guild_id, category)
+					await self.push_tweets(tweets, user_id, guild_id, category, None, update_min, update_max, push_to_discord, sync_to_telegram)
+		except tweepy.errors.TooManyRequests:
+			logging.info("Too Many Requests")
 
-				update_max, update_min = False, False
-				sync_info = query_result[category]
-
-				if push_to_discord:
-					max_id, min_id = sync_info["max_id"], sync_info["min_id"]
-
-				elif sync_to_telegram:
-					max_id, min_id = sync_info["max_sync_id"], sync_info["min_sync_id"]
-				
-				max_count = MAX_DISCORD_COUNT if push_to_discord else MAX_TELEGRAM_COUNT
-
-				# if reverse and min_id > 0:
-				# 	update_min = True
-				# 	tweets = list(tweepy.Cursor(api.get_favorites, count= max_count).items(MAX_LIKE_QUERY_COUNT))
-				if (not reverse) and max_id > 0:
-					update_max = True
-					tweets = list(tweepy.Cursor(api.get_favorites, count= max_count).items(MAX_LIKE_QUERY_COUNT))
-					id_list = [tweet.id for tweet in tweets]
-					if max_id in id_list:
-						tweets = tweets[:id_list.index(max_id)]
-					else:
-						tweets = list(tweepy.Cursor(api.get_favorites, count= max_count).items())
-				else:
-					update_max = True
-					tweets = list(tweepy.Cursor(api.get_favorites, count= max_count).items())
-
-					if len(tweets) > 0:
-						query_result = self.query_twitter_info(user_id, guild_id, category)
-						self.db["twitter_info"].update_one(query_result, {"$set": {
-							"%s.min_sync_id" % category: tweets[-1].id}})
-
-				if len(tweets) == 0: 
-					logging.info("Nothing fetched, continue.")
-					return
-
-				logging.info("Fetched %d tweets" % len(tweets))
-				# print(tweets[0].id)
-				tweets = tweets[::-1]
-
-				await self.push_tweets(tweets, user_id, guild_id, category, None, update_min, update_max, push_to_discord, sync_to_telegram)
 		
 				
 
@@ -639,11 +679,12 @@ class Twitter(commands.Cog):
 		logging.info(self.sync_status)
 		for key, channel_status in self.sync_status.items():
 			for entry, status in channel_status.items():
-				sync_to_telegram, push_to_discord = status["telegram"], status["discord"]
-				if sync_to_telegram:
+				if status["telegram"]:
 					await self.get_tweets(key[0], key[1], entry, sync_to_telegram = True)
-				if push_to_discord:
-					 await self.get_tweets(key[0], key[1], entry, push_to_discord	 = push_to_discord)
+		for key, channel_status in self.sync_status.items():
+			for entry, status in channel_status.items():
+				if status["discord"]:
+					 await self.get_tweets(key[0], key[1], entry, push_to_discord = status["discord"])
 		logging.info("Finished sync.")
 
 
@@ -656,8 +697,11 @@ class Twitter(commands.Cog):
 			await ctx.send("Please bind your Telegram channel first.")
 			return
 
-		logging.info("Toggle focus sync for %s" % user_id)
-		self.sync_status[(user_id, guild_id)][sync_type][target] = ctx
+		logging.info("Toggle %s %s sync for %s" % (target, sync_type, author))
+		if target == "telegram":
+			self.sync_status[(user_id, guild_id)][sync_type][target] = True
+		else:
+			self.sync_status[(user_id, guild_id)][sync_type][target] = ctx
 
 		if not self.sync.is_running():
 			self.sync.start()
@@ -665,55 +709,55 @@ class Twitter(commands.Cog):
 	@commands.command(pass_context=True)
 	async def syncLikeHere(self, ctx: commands.Context):
 
-		self.enable_sync("like_info", "discord")
+		await self.enable_sync(ctx, "like_info", "discord")
 
 
 
 	@commands.command(pass_context=True)
 	async def syncFocusHere(self, ctx: commands.Context):
 
-		self.enable_sync("focus_info", "discord")
+		await self.enable_sync(ctx, "focus_info", "discord")
 		
 
 
 	@commands.command(pass_context=True)
 	async def syncListHere(self, ctx: commands.Context):
 
-		self.enable_sync("list_info", "discord")
+		await self.enable_sync(ctx, "list_info", "discord")
 
 
 
 	@commands.command(pass_context=True)
 	async def syncTimelineHere(self, ctx: commands.Context):
 
-		self.enable_sync("timeline_info", "discord")
+		await self.enable_sync(ctx, "timeline_info", "discord")
 
 
 
 	@commands.command(pass_context=True)
 	async def syncLike(self, ctx: commands.Context):
 
-		self.enable_sync("like_info", "telegram")
+		await self.enable_sync(ctx, "like_info", "telegram")
 
 
 
 	@commands.command(pass_context=True)
 	async def syncFocus(self, ctx: commands.Context):
 
-		self.enable_sync("focus_info", "telegram")
+		await self.enable_sync(ctx, "focus_info", "telegram")
 
 
 	@commands.command(pass_context=True)
 	async def syncList(self, ctx: commands.Context):
 
-		self.enable_sync("list_info", "telegram")
+		await self.enable_sync(ctx, "list_info", "telegram")
 
 
 
 	@commands.command(pass_context=True)
 	async def syncTimeline(self, ctx: commands.Context):
 
-		self.enable_sync("timeline_info", "telegram")
+		await self.enable_sync(ctx, "timeline_info", "telegram")
 
 
 

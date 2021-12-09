@@ -50,10 +50,10 @@ class TelegramBot(commands.Cog):
 			if entry["like_channel"]:
 				self.bot.get_cog("Twitter").sync_status[(entry["user_id"], entry["guild_id"])]["like_info"]["telegram"] = True
 				sync_needed = True
-			# if entry["list_channel"]:
-			# 	self.bot.get_cog("Twitter").sync_status[(entry["user_id"], entry["guild_id"])]["list_info"]["telegram"] = True
-			# 	sync_needed = True
-
+			if entry["list_channel"]:
+				self.bot.get_cog("Twitter").sync_status[(entry["user_id"], entry["guild_id"])]["list_info"]["telegram"] = True
+				sync_needed = True
+			pass
 		if sync_needed: 
 			await self.bot.get_cog("Twitter").sync.start()
 
@@ -211,7 +211,7 @@ class TelegramBot(commands.Cog):
 		else:
 			return
 
-		logging.info("Sending to: %s" % target_channel)
+		# logging.info("Sending to: %s" % target_channel)
 		
 		if len(medias) == 1:
 			media_list = medias[0]
