@@ -583,59 +583,44 @@ class Twitter(commands.Cog):
 	@commands.command(pass_context=True, help="add an account for focus tracking")
 	async def addFocus(self, ctx: commands.Context, *, arg: str):
 		
-		author, guild = ctx.message.author, ctx.guild
-		user_id, guild_id = str(author.id), str(guild.id)
-
-		logging.info("Adding to focus tracking...")
-
-		re_result = self.user_link_pattern.search(arg)
-		if not re_result:
-			await ctx.send("Please provide a valid link of the twitter account.")
-			return
-
-		screen_name = re_result[2]
-
-		await self.add_by_link(user_id, guild_id, "focus_info", screen_name)
+		await self.addEntry(ctx, "focus_info", arg)
 
 
 
 	@commands.command(pass_context=True, help="add an account for list tracking")
 	async def addList(self, ctx: commands.Context, *, arg: str):
 		
-		author, guild = ctx.message.author, ctx.guild
-		user_id, guild_id = str(author.id), str(guild.id)
-
-		logging.info("Adding to list tracking...")
-
-		re_result = self.list_link_pattern.search(arg)
-		if not re_result:
-			await ctx.send("Please provide a valid link of the twitter list.")
-			return
-
-		list_id = re_result[2]
-
-		await self.add_by_link(user_id, guild_id, "list_info", list_id)
+		await self.addEntry(ctx, "list_info", arg)
 
 
 
 	@commands.command(pass_context=True, help="add an account for like tracking")
 	async def addLike(self, ctx: commands.Context, *, arg: str):
 		
+		await self.addEntry(ctx, "like_info", arg)
+
+
+	async def addEntry(self, ctx: commands.Context, sync_type: str, arg: str):
 		author, guild = ctx.message.author, ctx.guild
 		user_id, guild_id = str(author.id), str(guild.id)
 
-		logging.info("Adding to like tracking...")
+		logging.info("Adding to %s tracking..." % sync_type)
 
-		re_result = self.user_link_pattern.search(arg)
+		match sync_type:
+			case "like_info":
+				re_result = self.user_link_pattern.search(arg)
+			case "list_info":
+				re_result = self.list_link_pattern.search(arg)
+			case "focus_info":
+				re_result = self.user_link_pattern.search(arg)
+
 		if not re_result:
-			await ctx.send("Please provide a valid link of the twitter account.")
+			await ctx.send("Please provide a valid link.")
 			return
 
-		screen_name = re_result[2]
+		keyword = re_result[2]
 
-		await self.add_by_link(user_id, guild_id, "like_info", screen_name)
-
-
+		await self.add_by_link(user_id, guild_id, sync_type, keyword)
 
 
 	async def get_tweets_once(self, ctx: commands.Context, sync_type: str):
