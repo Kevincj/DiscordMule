@@ -665,7 +665,7 @@ class Twitter(commands.Cog):
 		await self.get_tweets(user_id, guild_id, "timeline_info", ctx, push_to_discord= True, reverse = True)
 
 
-	@tasks.loop(minutes=60)
+	@tasks.loop(minutes=120)
 	async def sync(self):
 
 		logging.info("Sync...")
@@ -725,6 +725,11 @@ class Twitter(commands.Cog):
 
 		await self.enable_sync(ctx, "timeline_info", "discord")
 
+	@commands.command(pass_context=True)
+	async def syncMyLikeHere(self, ctx: commands.Context):
+
+		await self.enable_sync(ctx, "self_like_info", "discord")
+
 
 
 	@commands.command(pass_context=True)
@@ -752,6 +757,10 @@ class Twitter(commands.Cog):
 
 		await self.enable_sync(ctx, "timeline_info", "telegram")
 
+	@commands.command(pass_context=True)
+	async def syncMyLike(self, ctx: commands.Context):
+
+		await self.enable_sync(ctx, "self_like_info", "telegram")
 
 
 	@commands.command(pass_context=True)
