@@ -62,108 +62,57 @@ class TelegramBot(commands.Cog):
 	
 
 
+	async def bindTelegram(self, ctx: commands.Context, channel_type: str, arg: str):
+		logging.info("Binding Telegram %s channel..." % channel_type)
+
+		author = ctx.message.author
+
+
+		query_result = self.db["telegram_info"].find_one({"user_id": str(author.id), "guild_id": str(ctx.guild.id)})
+		
+		if query_result:
+			self.db["telegram_info"].update_one(query_result, {"$set": {channel_type: arg}})
+
+		else:
+			entry = copy.deepcopy(TELEGRAM_TEMPLATE)
+			entry["user_id"] = str(author.id)
+			entry["guild_id"] = str(ctx.guild.id)
+			entry[channel_type] = arg
+			self.db["telegram_info"].insert_one(entry)
+
+		self.telegram_cache[(str(author.id), str(ctx.guild.id))][channel_type] = arg
 
 
 
 
 	@commands.command(pass_context=True, help="bind telegram like channel")
 	async def bindLikeTelegram(self, ctx: commands.Context, *, arg:str):
-
-		logging.info("Binding Telegram like channel...")
-
-		author = ctx.message.author
-
-
-
-		query_result = self.db["telegram_info"].find_one({"user_id": str(author.id), "guild_id": str(ctx.guild.id)})
-		
-		if query_result:
-			self.db["telegram_info"].update_one(query_result, {"$set": {"like_channel": arg}})
-
-		else:
-			entry = copy.deepcopy(TELEGRAM_TEMPLATE)
-			entry["user_id"] = str(author.id)
-			entry["guild_id"] = str(ctx.guild.id)
-			entry["like_channel"] = arg
-			self.db["telegram_info"].insert_one(entry)
-
-		self.telegram_cache[(str(author.id), str(ctx.guild.id))]["likes"] = arg
+		await self.bindTelegram(ctx, "like_channel", arg)
 
 
 
 	@commands.command(pass_context=True, help="bind telegram list channel")
 	async def bindListTelegram(self, ctx: commands.Context, *, arg:str):
-
-		logging.info("Binding Telegram list channel...")
-
-		author = ctx.message.author
-
-
-
-		query_result = self.db["telegram_info"].find_one({"user_id": str(author.id), "guild_id": str(ctx.guild.id)})
-		
-		if query_result:
-			self.db["telegram_info"].update_one(query_result, {"$set": {"list_channel": arg}})
-
-		else:
-			entry = copy.deepcopy(TELEGRAM_TEMPLATE)
-			entry["user_id"] = str(author.id)
-			entry["guild_id"] = str(ctx.guild.id)
-			entry["list_channel"] = arg
-			self.db["telegram_info"].insert_one(entry)
-
-		self.telegram_cache[(str(author.id), str(ctx.guild.id))]["lists"] = arg
+		await self.bindTelegram(ctx, "list_channel", arg)
 
 
 
 
 	@commands.command(pass_context=True, help="bind telegram focus channel")
 	async def bindFocusTelegram(self, ctx: commands.Context, *, arg:str):
-
-		logging.info("Binding Telegram focus channel...")
-
-		author = ctx.message.author
-
-
-
-		query_result = self.db["telegram_info"].find_one({"user_id": str(author.id), "guild_id": str(ctx.guild.id)})
-		
-		if query_result:
-			self.db["telegram_info"].update_one(query_result, {"$set": {"focus_channel": arg}})
-
-		else:
-			entry = copy.deepcopy(TELEGRAM_TEMPLATE)
-			entry["user_id"] = str(author.id)
-			entry["guild_id"] = str(ctx.guild.id)
-			entry["focus_channel"] = arg
-			self.db["telegram_info"].insert_one(entry)
-
-		self.telegram_cache[(str(author.id), str(ctx.guild.id))]["focus"] = arg
+		await self.bindTelegram(ctx, "focus_channel", arg)
 
 
 
 	@commands.command(pass_context=True, help="bind telegram timeline channel")
 	async def bindTimelineTelegram(self, ctx: commands.Context, *, arg:str):
 
-		logging.info("Binding Telegram timeline channel...")
+		await self.bindTelegram(ctx, "tl_channel", arg)
 
-		author = ctx.message.author
+	@commands.command(pass_context=True, help="bind telegram self-like channel")
+	async def bindTimelineTelegram(self, ctx: commands.Context, *, arg:str):
 
-
-
-		query_result = self.db["telegram_info"].find_one({"user_id": str(author.id), "guild_id": str(ctx.guild.id)})
-		
-		if query_result:
-			self.db["telegram_info"].update_one(query_result, {"$set": {"tl_channel": arg}})
-
-		else:
-			entry = copy.deepcopy(TELEGRAM_TEMPLATE)
-			entry["user_id"] = str(author.id)
-			entry["guild_id"] = str(ctx.guild.id)
-			entry["tl_channel"] = arg
-			self.db["telegram_info"].insert_one(entry)
-
-		self.telegram_cache[(str(author.id), str(ctx.guild.id))]["timeline"] = arg
+		await self.bindTelegram(ctx, "self_like_channel", arg)
 
 
 
