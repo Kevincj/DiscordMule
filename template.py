@@ -1,3 +1,5 @@
+import bson
+
 GUILD_TEMPLATE = {
 	"guild_id": None,
 	"roles": {},
@@ -21,10 +23,10 @@ TWEET_TEMPLATE = {
 	}
 
 INFO_TEMPLATE = {
-	"max_id": 0,
-	"max_sync_id": 0,
-	"min_id": 0,
-	"min_sync_id": 0
+	"max_id": bson.Int64(0),
+	"max_sync_id": bson.Int64(0),
+	"min_id": bson.Int64(0),
+	"min_sync_id": bson.Int64(0)
 	}
 
 TWITTER_TEMPLATE = {
