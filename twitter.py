@@ -36,6 +36,7 @@ class Twitter(commands.Cog):
 		self.user_link_pattern = re.compile("https?:\/\/(www\.)?twitter.com\/(\w*)$")
 		self.list_link_pattern = re.compile("https?:\/\/(www\.)?twitter.com\/i\/lists\/(\w*)$")
 
+		self.CATEGORIES = ["timeline_info", "focus_info", "like_info", "list_info", "self_like_info"]
 
 		self.RATE_LIMIT_TL = 15
 
@@ -212,7 +213,7 @@ class Twitter(commands.Cog):
 				tweet_ct += 1
 				# logging.info("Pushing to discord channel...")
 				# logging.info(media_list)
-				await push_to_discord.send("%s\n|%s||" % ("\n".join([m[0][0] for m in media_list]), tweet_link))
+				await push_to_discord.send("%s\n|https://www.twitter.com/%s/status/%s||" % ("\n".join([m[0][0] for m in media_list]), tweets[0].user.screen_name, tweets[0].id))
 				await asyncio.sleep(1)
 
 			if sync_to_telegram:
@@ -652,7 +653,10 @@ class Twitter(commands.Cog):
 		
 		await self.get_tweets_once(ctx, "like_info")
 
+	@commands.command(pass_context=True, help="grab medias from own likes")
+	async def getMyLike(self, ctx: commands.Context):
 		
+		await self.get_tweets_once(ctx, "self_like_info")
 
 
 
@@ -665,7 +669,7 @@ class Twitter(commands.Cog):
 		await self.get_tweets(user_id, guild_id, "timeline_info", ctx, push_to_discord= True, reverse = True)
 
 
-	@tasks.loop(minutes=120)
+	@tasks.loop(minutes=60 * 3)
 	async def sync(self):
 
 		logging.info("Sync...")
@@ -680,7 +684,33 @@ class Twitter(commands.Cog):
 					 await self.get_tweets(key[0], key[1], entry, push_to_discord = status["discord"])
 		logging.info("Finished sync.")
 
+	@commands.command(pass_context=True, help="sync all elements according to bit patterns (to telegram): tl-focus-like-list-selflike. E.g., 11001 means sync tl+focus+selflike ")
+	async def syncAll(self, ctx: commands.Context, *, arg: str):
+		try:
+			value = int(arg, 2)
+			if value <= 0 or value >= 2**5: raise ValueError
+		except:
+			return await ctx.send("Invalid argument.")
+		
+		sync_ctgs = [ctg for i, ctg in enumerate(self.CATEGORIES) if value & 1 << i]
+		for ctg in sync_ctgs:
+			await self.enable_sync(ctx, ctg, "telegram")
 
+			
+	@commands.command(pass_context=True, help="sync all elements according to bit patterns (to discord channel): tl-focus-like-list-selflike. E.g., 11001 means sync tl+focus+selflike ")
+	async def syncAllHere(self, ctx: commands.Context, *, arg: str):
+		try:
+			value = int(arg, 2)
+			if value <= 0 or value >= 2**5: raise ValueError
+		except:
+			return await ctx.send("Invalid argument.")
+		
+		sync_ctgs = [ctg for i, ctg in enumerate(self.CATEGORIES) if value & 1 << i]
+		for ctg in sync_ctgs:
+			await self.enable_sync(ctx, ctg, "discord")
+
+
+		
 
 	async def enable_sync(self, ctx: commands.Context, sync_type: str, target: str):
 		author, guild = ctx.message.author, ctx.guild
