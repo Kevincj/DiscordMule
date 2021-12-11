@@ -1,4 +1,4 @@
-import bson
+from bson.int64 import Int64
 
 GUILD_TEMPLATE = {
 	"guild_id": None,
@@ -23,10 +23,10 @@ TWEET_TEMPLATE = {
 	}
 
 INFO_TEMPLATE = {
-	"max_id": bson.Int64(0),
-	"max_sync_id": bson.Int64(0),
-	"min_id": bson.Int64(0),
-	"min_sync_id": bson.Int64(0)
+	"max_id": Int64(0),
+	"max_sync_id": Int64(0),
+	"min_id": Int64(0),
+	"min_sync_id": Int64(0)
 	}
 
 TWITTER_TEMPLATE = {
