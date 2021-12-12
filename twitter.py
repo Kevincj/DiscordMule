@@ -36,7 +36,7 @@ class Twitter(commands.Cog):
 		self.user_link_pattern = re.compile("https?:\/\/(www\.)?twitter.com\/(\w*)$")
 		self.list_link_pattern = re.compile("https?:\/\/(www\.)?twitter.com\/i\/lists\/(\w*)$")
 
-		self.CATEGORIES = ["timeline_info", "focus_info", "like_info", "list_info", "self_like_info"]
+		self.CATEGORIES = ["self_like_info", "list_info", "like_info", "focus_info", "timeline_info"]
 
 		self.RATE_LIMIT_TL = 15
 
