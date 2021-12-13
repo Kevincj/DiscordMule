@@ -673,12 +673,18 @@ class Twitter(commands.Cog):
 	async def sync(self):
 
 		logging.info("Sync...")
-		status = copy.deepcopy(self.sync_status)
-		for key, channel_status in status.items():
+
+		tmp_status = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: False)))
+		for key, channel_status in self.sync_status.items():
+			for entry, status in channel_status.items():
+				tmp_status[key][entry]["discord"] = status["discord"]
+				tmp_status[key][entry]["telegram"] = status["telegram"]
+ 
+		for key, channel_status in self.tmp_status.items():
 			for entry, status in channel_status.items():
 				if status["telegram"]:
 					await self.get_tweets(key[0], key[1], entry, sync_to_telegram = True)
-		for key, channel_status in status.items():
+		for key, channel_status in tmp_status.items():
 			for entry, status in channel_status.items():
 				if status["discord"]:
 					 await self.get_tweets(key[0], key[1], entry, push_to_discord = status["discord"])
@@ -706,19 +712,23 @@ class Twitter(commands.Cog):
 			return await ctx.send("Invalid argument.")
 		
 		sync_ctgs = [ctg for i, ctg in enumerate(self.CATEGORIES) if value & 1 << i]
-		for ctg in sync_ctgs:
-			await self.enable_sync(ctx, ctg, "discord")
+		asyncio.gather(*[self.enable_sync(ctx, ctg, "discord") for ctg in sync_ctgs])
+		if sync_ctgs and (not self.sync.is_running()):
+			self.sync.start()
+
+		
 
 
 		
 
-	async def enable_sync(self, ctx: commands.Context, sync_type: str, target: str):
+	async def enable_sync(self, ctx: commands.Context, sync_type: str, target: str, target_channel: str = ""):
 		author, guild = ctx.message.author, ctx.guild
 		user_id, guild_id = str(author.id), str(guild.id)
 
-		if not self.bot.get_cog("TelegramBot").get_telegram_channel(user_id, guild_id, "focus_channel"):
-			await ctx.send("Please bind your Telegram channel first.")
-			return
+		if target == "telegram":
+			if not self.bot.get_cog("TelegramBot").get_telegram_channel(user_id, guild_id, target_channel):
+				await ctx.send("Please bind your Telegram channel first.")
+				return
 
 		logging.info("Toggle %s %s sync for %s" % (target, sync_type, author))
 		if target == "telegram":
@@ -726,8 +736,6 @@ class Twitter(commands.Cog):
 		else:
 			self.sync_status[(user_id, guild_id)][sync_type][target] = ctx
 
-		if not self.sync.is_running():
-			self.sync.start()
 
 	@commands.command(pass_context=True)
 	async def syncLikeHere(self, ctx: commands.Context):
@@ -765,32 +773,32 @@ class Twitter(commands.Cog):
 	@commands.command(pass_context=True)
 	async def syncLike(self, ctx: commands.Context):
 
-		await self.enable_sync(ctx, "like_info", "telegram")
+		await self.enable_sync(ctx, "like_info", "telegram", "like_channel")
 
 
 
 	@commands.command(pass_context=True)
 	async def syncFocus(self, ctx: commands.Context):
 
-		await self.enable_sync(ctx, "focus_info", "telegram")
+		await self.enable_sync(ctx, "focus_info", "telegram", "focus_channel")
 
 
 	@commands.command(pass_context=True)
 	async def syncList(self, ctx: commands.Context):
 
-		await self.enable_sync(ctx, "list_info", "telegram")
+		await self.enable_sync(ctx, "list_info", "telegram", "list_channel")
 
 
 
 	@commands.command(pass_context=True)
 	async def syncTimeline(self, ctx: commands.Context):
 
-		await self.enable_sync(ctx, "timeline_info", "telegram")
+		await self.enable_sync(ctx, "timeline_info", "telegram", "tl_channel")
 
 	@commands.command(pass_context=True)
 	async def syncMyLike(self, ctx: commands.Context):
 
-		await self.enable_sync(ctx, "self_like_info", "telegram")
+		await self.enable_sync(ctx, "self_like_info", "telegram", "self_like_channel")
 
 
 	@commands.command(pass_context=True)
