@@ -213,7 +213,7 @@ class Twitter(commands.Cog):
 				tweet_ct += 1
 				# logging.info("Pushing to discord channel...")
 				# logging.info(media_list)
-				await push_to_discord.send("%s\n|https://www.twitter.com/%s/status/%s||" % ("\n".join([m[0][0] for m in media_list]), tweets[0].user.screen_name, tweets[0].id))
+				await push_to_discord.send("||https://www.twitter.com/%s/status/%s||\n%s" % (tweet.user.screen_name, tweet.id, "\n".join([m[0][0] for m in media_list])))
 				await asyncio.sleep(1)
 
 			if sync_to_telegram:
@@ -673,12 +673,12 @@ class Twitter(commands.Cog):
 	async def sync(self):
 
 		logging.info("Sync...")
-		logging.info(self.sync_status)
-		for key, channel_status in self.sync_status.items():
+		status = copy.deepcopy(self.sync_status)
+		for key, channel_status in status.items():
 			for entry, status in channel_status.items():
 				if status["telegram"]:
 					await self.get_tweets(key[0], key[1], entry, sync_to_telegram = True)
-		for key, channel_status in self.sync_status.items():
+		for key, channel_status in status.items():
 			for entry, status in channel_status.items():
 				if status["discord"]:
 					 await self.get_tweets(key[0], key[1], entry, push_to_discord = status["discord"])
