@@ -548,9 +548,70 @@ class Twitter(commands.Cog):
 				
 
 
+	async def removeEntry(self, ctx: commands.Context, sync_type: str, arg: str):
+		author, guild = ctx.message.author, ctx.guild
+		user_id, guild_id = str(author.id), str(guild.id)
 
+		logging.info("Adding to %s tracking..." % sync_type)
+
+		match sync_type:
+			case "like_info":
+				re_result = self.user_link_pattern.search(arg)
+			case "list_info":
+				re_result = self.list_link_pattern.search(arg)
+			case "focus_info":
+				re_result = self.user_link_pattern.search(arg)
+
+		if not re_result:
+			await ctx.send("Please provide a valid link.")
+			return
+
+		keyword = re_result[2]
+
+		await self.remove_by_link(user_id, guild_id, sync_type, keyword)
 		
+  
+  
+  
+	async def remove_by_link(self, user_id: str, guild_id: str, type_name: str, keyword: str):
+		"""
+		Add binding info into the database
 
+		:param user_id: id of the user
+		:param guild_id: id of the guild
+		:param type_name: type of the info to add, from {"list_info", "focus_info", "like_info"}
+		:param keyword: list or user's screen name
+		:return: None
+		"""
+		query_result = self.query_twitter_info(user_id, guild_id, type_name)
+
+		finished = False
+		if query_result and type_name in query_result.keys():
+			if keyword in query_result[type_name].keys():
+				return
+			
+			self.db["twitter_info"].update_one(query_result, {"$unset": {"%s.%s" % (type_name, keyword): 1}})
+
+
+
+	@commands.command(pass_context=True, help="add an account for focus tracking")
+	async def removeFocus(self, ctx: commands.Context, *, arg: str):
+		
+		await self.removeEntry(ctx, "focus_info", arg)
+
+
+
+	@commands.command(pass_context=True, help="add an account for list tracking")
+	async def removeList(self, ctx: commands.Context, *, arg: str):
+		
+		await self.removeEntry(ctx, "list_info", arg)
+
+
+
+	@commands.command(pass_context=True, help="add an account for like tracking")
+	async def removeLike(self, ctx: commands.Context, *, arg: str):
+		
+		await self.removeEntry(ctx, "like_info", arg)
 
 
 
@@ -680,7 +741,7 @@ class Twitter(commands.Cog):
 				tmp_status[key][entry]["discord"] = status["discord"]
 				tmp_status[key][entry]["telegram"] = status["telegram"]
  
-		for key, channel_status in self.tmp_status.items():
+		for key, channel_status in tmp_status.items():
 			for entry, status in channel_status.items():
 				if status["telegram"]:
 					await self.get_tweets(key[0], key[1], entry, sync_to_telegram = True)
