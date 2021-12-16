@@ -6,8 +6,8 @@ GUILD_TEMPLATE = {
 	"role_react_id": None,
 	"reactable_channels": [],
 	"forwarding_channels": {
-		"img": None,
-		"vid": None
+		"img": 0,
+		"vid": 0
 		}
 	}
 
@@ -46,5 +46,6 @@ TELEGRAM_TEMPLATE = {
 	"guild_id": None,
 	"tl_channel": "",
 	"like_channel": "",
-	"list_channel": ""
+	"list_channel": "",
+	"self_like_channel": ""
 	}
