@@ -31,15 +31,27 @@ class Twitter(commands.Cog):
 		self.bounded_auths = defaultdict(lambda: None)
 
 		self.sync_status = defaultdict(lambda: defaultdict(lambda: {"telegram": False, "discord": False}))
+		self.guild_forwarding = defaultdict(lambda: {"img": None, "vid": None})
+
 
 		self.url_pattern = re.compile("(https?:..t.co.\w+)$")
 		self.user_link_pattern = re.compile("https?:\/\/(www\.)?twitter.com\/(\w*)$")
 		self.list_link_pattern = re.compile("https?:\/\/(www\.)?twitter.com\/i\/lists\/(\w*)$")
+		self.media_forwarding_pattern = re.compile("\|\|http.+[^\|]+\|\|")
+
 
 		self.CATEGORIES = ["self_like_info", "list_info", "like_info", "focus_info", "timeline_info"]
 
 		self.RATE_LIMIT_TL = 15
-
+  
+		self.load_guild_forwarding()
+  
+	def load_guild_forwarding(self):
+		for entry in self.db["guild_info"].find({}): 
+			self.guild_forwarding[entry["guild_id"]]["img"] = entry["forwarding_channels"]["img"]
+			self.guild_forwarding[entry["guild_id"]]["vid"] = entry["forwarding_channels"]["vid"]
+  
+  
 	@commands.command(pass_context=True, help="request a Twitter connection")
 	async def connectTwitter(self, ctx: commands.Context):
 
@@ -139,9 +151,62 @@ class Twitter(commands.Cog):
 		return self.db["twitter_info"].find_one({"user_id": user_id, "guild_id": guild_id}, fields_dict)
 
 
+	def is_image_link(self, media):
+		return "jpg" in media or "png" in media or "gif" in media or "webp" in media or "jpeg" in media
+
+	def is_image_link(self, media):
+		return "mp4" in media or "mov" in media or "avi" in media
+
+	def is_twitter_message(self, message: discord.Message):
+		return self.media_forwarding_pattern.match(message.content)
+
+	def get_medias(self, message: discord.Message):
+		media_list = []
+     
+		content = message.content
+		if self.media_forwarding_pattern.match(content):
+			medias = content.split("\n")[1:]
+			for media in medias:
+				if self.is_image_link(media):
+					media_list.append((media, "img"))
+				elif self.is_video_link(media):
+					media_list.append((media, "vid"))
+		return media_list
 
 
 
+  
+	@commands.Cog.listener()
+	async def on_message(self, message):
+	
+		if message.author.id == self.bot.id and \
+			(message.channel.id not in self.guild_forwarding[str(message.guild.id)].values()) and \
+			self.is_twitter_message(message):
+			await message.add_reaction('✈️')
+			await message.add_reaction('❌')
+	
+	@commands.Cog.listener()
+	async def on_raw_reaction_add(self, reaction_payload):
+		channel = await self.bot.fetch_channel(reaction_payload.channel_id)
+		message = await channel.fetch_message(reaction_payload.message_id)
+		emoji = str(reaction_payload.emoji)
+		user = await self.bot.fetch_user(reaction_payload.user_id)
+  
+		if emoji == "✈️":
+			if message.author.id == self.bot.id and \
+				(message.channel.id not in self.guild_forwarding[str(message.guild.id)].values()) and \
+				self.is_twitter_message(message):
+				media_list = self.get_medias(message)
+				forwarding_channels = self.guild_forwarding[str(message.guild.id)]
+				for media, type in media_list:
+					if type == "img" and forwarding_channels["img"]:
+						await self.bot.get_channel(forwarding_channels["img"]).send(media)
+					elif type == "vid" and forwarding_channels["vid"]:
+						await self.bot.get_channel(forwarding_channels["vid"]).send(media)
+		
+		elif emoji == '❌':
+			await message.delete()
+						
 
 
 	@commands.command(pass_context=True, help="bind as image channel for forwarding")
@@ -153,7 +218,7 @@ class Twitter(commands.Cog):
 			await ctx.send("You don't have the permission.")
 			return
 
-		query_result = self.db["guild_info"].find_one({"user_id": user_id, "guild_id": guild_id})
+		query_result = self.db["guild_info"].find_one({"guild_id": guild_id})
 		
 		if query_result:
 			self.db["guild_info"].update_one(query_result, {"$set": {"forwarding_channels.img": ctx.channel.id}})
@@ -163,6 +228,8 @@ class Twitter(commands.Cog):
 			entry["guild_id"] = guild_id
 			entry["forwarding_channels"]["img"] = ctx.channel.id
 			self.db["guild_info"].insert_one(entry)
+   
+		self.guild_forwarding[guild_id]["img"] = ctx.channel.id
 
 
 	@commands.command(pass_context=True, help="bind as video channel for forwarding")
@@ -185,6 +252,7 @@ class Twitter(commands.Cog):
 			entry["forwarding_channels"]["vid"] = ctx.channel.id
 			self.db["guild_info"].insert_one(entry)
 
+		self.guild_forwarding[guild_id]["vid"] = ctx.channel.id
 
 
 
