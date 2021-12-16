@@ -12,7 +12,7 @@ import configparser
 from discord.ext import tasks
 from discord.ext import commands
 from collections import defaultdict
-from template import TWEET_TEMPLATE, TWITTER_TEMPLATE, INFO_TEMPLATE
+from template import GUILD_TEMPLATE, TWEET_TEMPLATE, TWITTER_TEMPLATE, INFO_TEMPLATE
 
 
 
@@ -137,6 +137,58 @@ class Twitter(commands.Cog):
 		fields_dict["guild_id"] = 1
 		# logging.info("Querying %s, %s, %s" % (user_id, guild_id, fields_dict))
 		return self.db["twitter_info"].find_one({"user_id": user_id, "guild_id": guild_id}, fields_dict)
+
+
+
+
+
+
+
+	@commands.command(pass_context=True, help="bind as image channel for forwarding")
+	async def bindImageChannelHere(self, ctx: commands.Context):
+		author, guild = ctx.message.author, ctx.guild
+		user_id, guild_id = str(author.id), str(guild.id)
+  
+		if author.guild_permissions.administrator is not True: 
+			await ctx.send("You don't have the permission.")
+			return
+
+		query_result = self.db["guild_info"].find_one({"user_id": user_id, "guild_id": guild_id})
+		
+		if query_result:
+			self.db["guild_info"].update_one(query_result, {"$set": {"forwarding_channels.img": ctx.channel.id}})
+
+		else:
+			entry = copy.deepcopy(GUILD_TEMPLATE)
+			entry["guild_id"] = guild_id
+			entry["forwarding_channels"]["img"] = ctx.channel.id
+			self.db["guild_info"].insert_one(entry)
+
+
+	@commands.command(pass_context=True, help="bind as video channel for forwarding")
+	async def bindVideoChannelHere(self, ctx: commands.Context):
+		author, guild = ctx.message.author, ctx.guild
+		user_id, guild_id = str(author.id), str(guild.id)
+  
+		if author.guild_permissions.administrator is not True: 
+			await ctx.send("You don't have the permission.")
+			return
+
+		query_result = self.db["guild_info"].find_one({"user_id": user_id, "guild_id": guild_id})
+		
+		if query_result:
+			self.db["guild_info"].update_one(query_result, {"$set": {"forwarding_channels.vid": ctx.channel.id}})
+
+		else:
+			entry = copy.deepcopy(GUILD_TEMPLATE)
+			entry["guild_id"] = guild_id
+			entry["forwarding_channels"]["vid"] = ctx.channel.id
+			self.db["guild_info"].insert_one(entry)
+
+
+
+
+
 
 
 	def update_database(self, user_id: str, guild_id: str, category: str, latest_id: int = 0, push_to_discord: bool = False, sync_to_telegram: bool = False, update_min: bool = False, update_max: bool = False, sub_category: str = None):
