@@ -164,20 +164,21 @@ class TelegramBot(commands.Cog):
 		
 		if len(medias) == 1:
 			media_list = medias[0]
-			for j in range(len(media_list)-1,-1,-1):
+			j = len(media_list) - 1
+			while j >= 0:
 				media, isVideo = media_list[j]
 				try:
 					if isVideo:
 						await self.tel_bot.send_video(chat_id="@"+target_channel, video=media, caption = tweet_info)
 					else:
 						await self.tel_bot.send_photo(chat_id="@"+target_channel, photo=media, caption = tweet_info)
+					break
 				except aiogram.utils.exceptions.BadRequest as err:
 					logging.error("Bad Request: %s" % media)
+					j -= 1
+				except asyncio.TimeoutError | aiogram.utils.exceptions.TelegramAPIError:
+					asyncio.sleep(10)
 					continue
-				except asyncio.TimeoutError:
-					# logging.error("Timeout. Passed.")
-					continue
-				break
 			return
 
 
@@ -197,22 +198,24 @@ class TelegramBot(commands.Cog):
 				else:
 					media_group.attach_photo(media, tweet_info)
 		
-		try:
-			await self.tel_bot.send_media_group(chat_id="@"+target_channel, media=media_group)
-		except aiogram.utils.exceptions.BadRequest as err:
-			logging.error("Bad Request: %s" % medias)
+		while True:
+			try:
+				await self.tel_bot.send_media_group(chat_id="@"+target_channel, media=media_group)
+			except aiogram.utils.exceptions.BadRequest as err:
+				logging.error("Bad Request: %s" % medias)
+			
+				while medias:
+					media_list = [medias[0]]
+					try:
+						await self.send_medias(author_id, guild_id, [media_list], tweet_info, channel_type)
+						medias.pop(0)
+					except aiogram.utils.exceptions.RetryAfter as err:
+						logging.error("Try again in %d seconds." % err.timeout)
+						await asyncio.sleep(err.timeout)
+					except:
+						medias.pop(0)
+				return
 
-			while medias:
-				media_list = [medias[0]]
-				try:
-					await self.send_medias(author_id, guild_id, [media_list], tweet_info, channel_type)
-					medias.pop(0)
-				except aiogram.utils.exceptions.RetryAfter as err:
-					logging.error("Try again in %d seconds." % err.timeout)
-					await asyncio.sleep(err.timeout)
-				except:
-					medias.pop(0)
-
-
-		except asyncio.TimeoutError:
-			logging.error("Timeout. Passed.")
+			except asyncio.TimeoutError | aiogram.utils.exceptions.TelegramAPIError:
+				asyncio.sleep(10)
+				continue
