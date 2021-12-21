@@ -154,7 +154,7 @@ class Twitter(commands.Cog):
 	def is_image_link(self, media):
 		return "jpg" in media or "png" in media or "gif" in media or "webp" in media or "jpeg" in media
 
-	def is_image_link(self, media):
+	def is_video_link(self, media):
 		return "mp4" in media or "mov" in media or "avi" in media
 
 	def is_twitter_message(self, message: discord.Message):
@@ -179,7 +179,7 @@ class Twitter(commands.Cog):
 	@commands.Cog.listener()
 	async def on_message(self, message):
 	
-		if message.author.id == self.bot.id and \
+		if message.author.id == self.bot.user.id and \
 			(message.channel.id not in self.guild_forwarding[str(message.guild.id)].values()) and \
 			self.is_twitter_message(message):
 			await message.add_reaction('✈️')
@@ -191,9 +191,10 @@ class Twitter(commands.Cog):
 		message = await channel.fetch_message(reaction_payload.message_id)
 		emoji = str(reaction_payload.emoji)
 		user = await self.bot.fetch_user(reaction_payload.user_id)
+		if user.id == self.bot.user.id: return
   
 		if emoji == "✈️":
-			if message.author.id == self.bot.id and \
+			if message.author.id == self.bot.user.id and \
 				(message.channel.id not in self.guild_forwarding[str(message.guild.id)].values()) and \
 				self.is_twitter_message(message):
 				media_list = self.get_medias(message)
