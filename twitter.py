@@ -868,7 +868,7 @@ class Twitter(commands.Cog):
 		for key, channel_status in tmp_status.items():
 			for entry, status in channel_status.items():
 				if status["discord"]:
-					 await self.get_tweets(key[0], key[1], entry, push_to_discord = status["discord"])
+					await self.get_tweets(key[0], key[1], entry, push_to_discord = status["discord"])
 		logging.info("Finished sync.")
 
 	@commands.command(pass_context=True, help="sync all elements according to bit patterns (to telegram): tl-focus-like-list-selflike. E.g., 11001 means sync tl+focus+selflike ")
