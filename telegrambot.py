@@ -176,8 +176,11 @@ class TelegramBot(commands.Cog):
 				except aiogram.utils.exceptions.BadRequest as err:
 					logging.error("Bad Request: %s" % media)
 					j -= 1
-				except asyncio.TimeoutError | aiogram.utils.exceptions.TelegramAPIError:
-					asyncio.sleep(10)
+				except asyncio.TimeoutError:
+					await asyncio.sleep(10)
+					continue
+				except aiogram.utils.exceptions.TelegramAPIError:
+					await asyncio.sleep(10)
 					continue
 			return
 
@@ -216,6 +219,9 @@ class TelegramBot(commands.Cog):
 						medias.pop(0)
 				return
 
-			except asyncio.TimeoutError | aiogram.utils.exceptions.TelegramAPIError:
-				asyncio.sleep(10)
+			except asyncio.TimeoutError:
+				await asyncio.sleep(10)
+				continue
+			except aiogram.utils.exceptions.TelegramAPIError:
+				await asyncio.sleep(10)
 				continue
