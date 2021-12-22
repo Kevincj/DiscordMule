@@ -45,6 +45,7 @@ class Twitter(commands.Cog):
 		self.RATE_LIMIT_TL = 15
   
 		self.load_guild_forwarding()
+		# logging.info(self.guild_forwarding)
   
 	def load_guild_forwarding(self):
 		for entry in self.db["guild_info"].find({}): 
@@ -192,8 +193,9 @@ class Twitter(commands.Cog):
 		emoji = str(reaction_payload.emoji)
 		user = await self.bot.fetch_user(reaction_payload.user_id)
 		if user.id == self.bot.user.id: return
-  
+	
 		if emoji == "✈️":
+			# logging.info("%s %s" % (self.guild_forwarding[str(message.guild.id)], self.is_twitter_message(message)))
 			if message.author.id == self.bot.user.id and \
 				(message.channel.id not in self.guild_forwarding[str(message.guild.id)].values()) and \
 				self.is_twitter_message(message):
@@ -208,6 +210,7 @@ class Twitter(commands.Cog):
 		elif emoji == '❌':
 			await message.delete()
 						
+
 
 
 	@commands.command(pass_context=True, help="bind as image channel for forwarding")
@@ -242,7 +245,7 @@ class Twitter(commands.Cog):
 			await ctx.send("You don't have the permission.")
 			return
 
-		query_result = self.db["guild_info"].find_one({"user_id": user_id, "guild_id": guild_id})
+		query_result = self.db["guild_info"].find_one({"guild_id": guild_id})
 		
 		if query_result:
 			self.db["guild_info"].update_one(query_result, {"$set": {"forwarding_channels.vid": ctx.channel.id}})
@@ -335,7 +338,7 @@ class Twitter(commands.Cog):
 				# logging.info("Pushing to discord channel...")
 				# logging.info(media_list)
 				await push_to_discord.send("||https://www.twitter.com/%s/status/%s||\n%s" % (tweet.user.screen_name, tweet.id, "\n".join([m[0][0] for m in media_list])))
-				await asyncio.sleep(1)
+				await asyncio.sleep(2)
 
 			if sync_to_telegram:
 
