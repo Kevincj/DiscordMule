@@ -152,6 +152,30 @@ class Twitter(commands.Cog):
 		return self.db["twitter_info"].find_one({"user_id": user_id, "guild_id": guild_id}, fields_dict)
 
 
+
+	@tasks.loop(minutes=60 * 3)
+	async def sync(self):
+
+		logging.info("Sync...")
+
+		tmp_status = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: False)))
+		for key, channel_status in self.sync_status.items():
+			for entry, status in channel_status.items():
+				tmp_status[key][entry]["discord"] = status["discord"]
+				tmp_status[key][entry]["telegram"] = status["telegram"]
+ 
+		for key, channel_status in tmp_status.items():
+			for entry, status in channel_status.items():
+				if status["telegram"]:
+					await self.get_tweets(key[0], key[1], entry, sync_to_telegram = True)
+		for key, channel_status in tmp_status.items():
+			for entry, status in channel_status.items():
+				if status["discord"]:
+					await self.get_tweets(key[0], key[1], entry, push_to_discord = status["discord"])
+		logging.info("Finished sync.")
+
+
+
 	def is_image_link(self, media):
 		return "jpg" in media or "png" in media or "gif" in media or "webp" in media or "jpeg" in media
 
@@ -184,7 +208,9 @@ class Twitter(commands.Cog):
 			(message.channel.id not in self.guild_forwarding[str(message.guild.id)].values()) and \
 			self.is_twitter_message(message):
 			await message.add_reaction('✈️')
+			await asyncio.sleep(1)
 			await message.add_reaction('❌')
+			await asyncio.sleep(1)
 	
 	@commands.Cog.listener()
 	async def on_raw_reaction_add(self, reaction_payload):
@@ -363,7 +389,8 @@ class Twitter(commands.Cog):
 								self.update_database(user_id, guild_id, category, current_id, push_to_discord, sync_to_telegram, update_min, update_max, sub_category)
 
 							await asyncio.sleep(err.timeout)
-
+						# except Exception as e:
+						# 	logging.error(e)
 						# except aiogram.utils.exceptions.BadRequest as err:
 							# logging.error("Bad Request. Skipped.")
 							# logging.error(err)
@@ -853,27 +880,6 @@ class Twitter(commands.Cog):
 
 		await self.get_tweets(user_id, guild_id, "timeline_info", ctx, push_to_discord= True, reverse = True)
 
-
-	@tasks.loop(minutes=60 * 3)
-	async def sync(self):
-
-		logging.info("Sync...")
-
-		tmp_status = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: False)))
-		for key, channel_status in self.sync_status.items():
-			for entry, status in channel_status.items():
-				tmp_status[key][entry]["discord"] = status["discord"]
-				tmp_status[key][entry]["telegram"] = status["telegram"]
- 
-		for key, channel_status in tmp_status.items():
-			for entry, status in channel_status.items():
-				if status["telegram"]:
-					await self.get_tweets(key[0], key[1], entry, sync_to_telegram = True)
-		for key, channel_status in tmp_status.items():
-			for entry, status in channel_status.items():
-				if status["discord"]:
-					await self.get_tweets(key[0], key[1], entry, push_to_discord = status["discord"])
-		logging.info("Finished sync.")
 
 	@commands.command(pass_context=True, help="sync all elements according to bit patterns (to telegram): tl-focus-like-list-selflike. E.g., 11001 means sync tl+focus+selflike ")
 	async def syncAll(self, ctx: commands.Context, *, arg: str):
