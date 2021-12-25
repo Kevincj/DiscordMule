@@ -6,8 +6,9 @@ GUILD_TEMPLATE = {
 	"role_react_id": None,
 	"reactable_channels": [],
 	"forwarding_channels": {
-		"img": 0,
-		"vid": 0
+		"img": Int64(0),
+		"vid": Int64(0),
+		"pending": Int64(0)
 		}
 	}
 
