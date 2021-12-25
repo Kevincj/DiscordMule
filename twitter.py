@@ -51,6 +51,7 @@ class Twitter(commands.Cog):
 		for entry in self.db["guild_info"].find({}): 
 			self.guild_forwarding[entry["guild_id"]]["img"] = entry["forwarding_channels"]["img"]
 			self.guild_forwarding[entry["guild_id"]]["vid"] = entry["forwarding_channels"]["vid"]
+			self.guild_forwarding[entry["guild_id"]]["pending"] = entry["forwarding_channels"]["pending"]
   
   
 	@commands.command(pass_context=True, help="request a Twitter connection")
@@ -209,6 +210,8 @@ class Twitter(commands.Cog):
 			self.is_twitter_message(message):
 			await message.add_reaction('✈️')
 			await asyncio.sleep(1)
+			await message.add_reaction('➡️')
+			await asyncio.sleep(1)
 			await message.add_reaction('❌')
 			await asyncio.sleep(1)
 	
@@ -219,12 +222,14 @@ class Twitter(commands.Cog):
 		emoji = str(reaction_payload.emoji)
 		user = await self.bot.fetch_user(reaction_payload.user_id)
 		if user.id == self.bot.user.id: return
-	
+
 		if emoji == "✈️":
 			# logging.info("%s %s" % (self.guild_forwarding[str(message.guild.id)], self.is_twitter_message(message)))
 			if message.author.id == self.bot.user.id and \
-				(message.channel.id not in self.guild_forwarding[str(message.guild.id)].values()) and \
+				(message.channel.id == self.guild_forwarding[str(message.guild.id)]["img"] or\
+        		message.channel.id == self.guild_forwarding[str(message.guild.id)]["vid"]) and \
 				self.is_twitter_message(message):
+				# logging.info("Fowarding to img/vid/pending channels")
 				media_list = self.get_medias(message)
 				forwarding_channels = self.guild_forwarding[str(message.guild.id)]
 				for media, type in media_list:
@@ -232,11 +237,69 @@ class Twitter(commands.Cog):
 						await self.bot.get_channel(forwarding_channels["img"]).send(media)
 					elif type == "vid" and forwarding_channels["vid"]:
 						await self.bot.get_channel(forwarding_channels["vid"]).send(media)
-		
+			elif message.channel.id == self.guild_forwarding[str(message.guild.id)]["pending"]:
+				# logging.info("Fowarding to img/vid channels")
+				forwarding_channels = self.guild_forwarding[str(message.guild.id)]
+				media = message.content
+				if message.content:
+					media = message.content
+				elif message.attachments:
+					media = message.attachments[0].url
+				if media:
+					if self.is_image_link(media) and forwarding_channels["img"]:
+						await self.bot.get_channel(forwarding_channels["img"]).send(media)
+					elif self.is_video_link(media) and forwarding_channels["vid"]:
+						await self.bot.get_channel(forwarding_channels["vid"]).send(media)
+					await message.delete()
+		elif emoji == "➡️":
+			# logging.info("%s %s" % (self.guild_forwarding[str(message.guild.id)], self.is_twitter_message(message)))
+			if message.author.id == self.bot.user.id and \
+				(message.channel.id not in self.guild_forwarding[str(message.guild.id)].values()) and \
+				self.is_twitter_message(message):
+				media_list = self.get_medias(message)
+				forwarding_channels = self.guild_forwarding[str(message.guild.id)]
+				for media, type in media_list:
+					new_message = None
+					if type == "img" and forwarding_channels["img"]:
+						if forwarding_channels["pending"]:
+							new_message = await self.bot.get_channel(forwarding_channels["pending"]).send(media)
+						else:
+							new_message = await self.bot.get_channel(forwarding_channels["img"]).send(media)
+					elif type == "vid" and forwarding_channels["vid"]:
+						if forwarding_channels["pending"]:
+							new_message = await self.bot.get_channel(forwarding_channels["pending"]).send(media)
+						else:
+							new_message = await self.bot.get_channel(forwarding_channels["vid"]).send(media)
+					if new_message:
+						await new_message.add_reaction('✈️')
+						await asyncio.sleep(1)
+						await new_message.add_reaction('❌')
+						await asyncio.sleep(1)
+						
 		elif emoji == '❌':
 			await message.delete()
 						
+	@commands.command(pass_context=True, help="bind as cache channel for forwarding")
+	async def bindPendingChannelHere(self, ctx: commands.Context):
+		author, guild = ctx.message.author, ctx.guild
+		user_id, guild_id = str(author.id), str(guild.id)
+  
+		if author.guild_permissions.administrator is not True: 
+			await ctx.send("You don't have the permission.")
+			return
 
+		query_result = self.db["guild_info"].find_one({"guild_id": guild_id})
+		
+		if query_result:
+			self.db["guild_info"].update_one(query_result, {"$set": {"forwarding_channels.pending": ctx.channel.id}})
+
+		else:
+			entry = copy.deepcopy(GUILD_TEMPLATE)
+			entry["guild_id"] = guild_id
+			entry["forwarding_channels"]["pending"] = ctx.channel.id
+			self.db["guild_info"].insert_one(entry)
+   
+		self.guild_forwarding[guild_id]["pending"] = ctx.channel.id
 
 
 	@commands.command(pass_context=True, help="bind as image channel for forwarding")
