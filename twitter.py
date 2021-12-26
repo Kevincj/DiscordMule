@@ -292,8 +292,14 @@ class Twitter(commands.Cog):
 					await asyncio.sleep(0.3)
 					
 					if not new_message: continue
-					await new_message.add_reaction('✈️')
-					await asyncio.sleep(0.3)
+					if forwarding_channels["pending"]:
+						await new_message.add_reaction('✈️')
+						await asyncio.sleep(0.3)
+					else:
+						await new_message.add_reaction('❤️')
+						await asyncio.sleep(0.3)
+						await new_message.add_reaction('💩')
+						await asyncio.sleep(0.3)
 					# await new_message.add_reaction('❌')
 					# await asyncio.sleep(0.3)
 			
@@ -307,17 +313,27 @@ class Twitter(commands.Cog):
 				else: return
 				forwarding_channels = self.guild_forwarding[str(message.guild.id)]
 				if self.is_image_link(media) and forwarding_channels["img"]:
-					new_message = await self.bot.get_channel(forwarding_channels["img"]).send(media)
+					if forwarding_channels["pending"]:
+						new_message = await self.bot.get_channel(forwarding_channels["pending"]).send(media)
+					else:
+						new_message = await self.bot.get_channel(forwarding_channels["img"]).send(media)
 				elif self.is_video_link(media) and forwarding_channels["vid"]:
-					new_message = await self.bot.get_channel(forwarding_channels["vid"]).send(media)
+					if forwarding_channels["pending"]:
+							new_message = await self.bot.get_channel(forwarding_channels["pending"]).send(media)
+					else:
+						new_message = await self.bot.get_channel(forwarding_channels["vid"]).send(media)
 				await message.delete()
 				await asyncio.sleep(0.3)
 				
 				if not new_message: return
-				await new_message.add_reaction('❤️')
-				await asyncio.sleep(0.3)
-				await new_message.add_reaction('💩')
-				await asyncio.sleep(0.3)
+				if forwarding_channels["pending"]:
+					await new_message.add_reaction('✈️')
+					await asyncio.sleep(0.3)
+				else:
+					await new_message.add_reaction('❤️')
+					await asyncio.sleep(0.3)
+					await new_message.add_reaction('💩')
+					await asyncio.sleep(0.3)
 						
 		elif emoji == '❌':
 			await message.delete()
