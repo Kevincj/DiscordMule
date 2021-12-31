@@ -153,6 +153,35 @@ class Twitter(commands.Cog):
 		return self.db["twitter_info"].find_one({"user_id": user_id, "guild_id": guild_id}, fields_dict)
 
 
+	@commands.command(pass_context=True, help="flush cache channel")
+	async def flush(self, ctx: commands.Context = None):
+     
+		if ctx.channel.id == self.guild_forwarding[str(ctx.guild.id)]["pending"]:
+			messages = await ctx.channel.history(limit=100).flatten()
+			for message in messages:
+				new_message = None
+				forwarding_channels = self.guild_forwarding[str(message.guild.id)]
+				media = message.content
+				if message.content:
+					media = message.content
+				elif message.attachments:
+					media = message.attachments[0].url
+				else: return
+				logging.info("Pending media: %s" % media)
+				if self.is_image_link(media.lower()) and forwarding_channels["img"]:
+					new_message = await self.bot.get_channel(forwarding_channels["img"]).send(media)
+				elif self.is_video_link(media.lower()) and forwarding_channels["vid"]:
+					new_message = await self.bot.get_channel(forwarding_channels["vid"]).send(media)
+				await message.delete()
+				await asyncio.sleep(0.3)
+				
+				if not new_message: return
+				await new_message.add_reaction('❤️')
+				await asyncio.sleep(0.3)
+				await new_message.add_reaction('💩')
+				await asyncio.sleep(0.3)
+		logging.info("Successfully deleted %d messages." % len(messages))
+
 
 	@tasks.loop(minutes=60 * 3)
 	async def sync(self):
@@ -193,9 +222,9 @@ class Twitter(commands.Cog):
 		if self.media_forwarding_pattern.match(content):
 			medias = content.split("\n")[1:]
 			for media in medias:
-				if self.is_image_link(media):
+				if self.is_image_link(media.lower()):
 					media_list.append((media, "img"))
-				elif self.is_video_link(media):
+				elif self.is_video_link(media.lower()):
 					media_list.append((media, "vid"))
 		return media_list
 
@@ -205,7 +234,8 @@ class Twitter(commands.Cog):
   
 	@commands.Cog.listener()
 	async def on_message(self, message):
-	
+		
+		if self.bot.command_prefix != "=": return
 		# if message.author.id == self.bot.user.id and \
 		# 	(message.channel.id not in self.guild_forwarding[str(message.guild.id)].values()) and \
 		# 	self.is_twitter_message(message):
@@ -223,6 +253,7 @@ class Twitter(commands.Cog):
 	
 	@commands.Cog.listener()
 	async def on_raw_reaction_add(self, reaction_payload):
+		if self.bot.command_prefix != "=": return
 		channel = await self.bot.fetch_channel(reaction_payload.channel_id)
 		message = await channel.fetch_message(reaction_payload.message_id)
 		emoji = str(reaction_payload.emoji)
@@ -259,9 +290,10 @@ class Twitter(commands.Cog):
 				elif message.attachments:
 					media = message.attachments[0].url
 				else: return
-				if self.is_image_link(media) and forwarding_channels["img"]:
+				logging.info("Pending media: %s" % media)
+				if self.is_image_link(media.lower()) and forwarding_channels["img"]:
 					new_message = await self.bot.get_channel(forwarding_channels["img"]).send(media)
-				elif self.is_video_link(media) and forwarding_channels["vid"]:
+				elif self.is_video_link(media.lower()) and forwarding_channels["vid"]:
 					new_message = await self.bot.get_channel(forwarding_channels["vid"]).send(media)
 				await message.delete()
 				await asyncio.sleep(0.3)
@@ -311,13 +343,14 @@ class Twitter(commands.Cog):
 				elif message.attachments:
 					media = message.attachments[0].url
 				else: return
+				logging.info("Pending media: %s" % media)
 				forwarding_channels = self.guild_forwarding[str(message.guild.id)]
-				if self.is_image_link(media) and forwarding_channels["img"]:
+				if self.is_image_link(media.lower()) and forwarding_channels["img"]:
 					if forwarding_channels["pending"]:
 						new_message = await self.bot.get_channel(forwarding_channels["pending"]).send(media)
 					else:
 						new_message = await self.bot.get_channel(forwarding_channels["img"]).send(media)
-				elif self.is_video_link(media) and forwarding_channels["vid"]:
+				elif self.is_video_link(media.lower()) and forwarding_channels["vid"]:
 					if forwarding_channels["pending"]:
 							new_message = await self.bot.get_channel(forwarding_channels["pending"]).send(media)
 					else:
@@ -740,11 +773,11 @@ class Twitter(commands.Cog):
 							id_list = [tweet.id for tweet in tweets]
 							if max_id in id_list:
 								tweets = tweets[:id_list.index(max_id)]
-							else:
-								tweets = list(tweepy.Cursor(api.get_favorites, screen_name = user_name, count= max_count).items())
-								id_list = [tweet.id for tweet in tweets]
-								if max_id in id_list:
-									tweets = tweets[:id_list.index(max_id)]
+							# else:
+							# 	tweets = list(tweepy.Cursor(api.get_favorites, screen_name = user_name, count= max_count).items())
+							# 	id_list = [tweet.id for tweet in tweets]
+							# 	if max_id in id_list:
+							# 		tweets = tweets[:id_list.index(max_id)]
 						else:
 							update_max = True
 							tweets = list(tweepy.Cursor(api.get_favorites, screen_name = user_name, count= max_count).items())
