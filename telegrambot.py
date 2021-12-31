@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-
+import copy
 import aiogram
 import asyncio
 import discord
@@ -11,7 +11,7 @@ from discord.ext import commands
 # from telegram.ext import Updater
 from collections import defaultdict
 # from telegram.ext import CommandHandler
-from template import TWEET_TEMPLATE, TWITTER_TEMPLATE
+from template import TELEGRAM_TEMPLATE, TWEET_TEMPLATE, TWITTER_TEMPLATE
 from aiogram import Bot, Dispatcher, executor, types
 
 class TelegramBot(commands.Cog):
@@ -166,6 +166,7 @@ class TelegramBot(commands.Cog):
 			# logging.info("Sending single media...")
 			media_list = medias[0]
 			j = len(media_list) - 1
+			retry = 0
 			while j >= 0:
 				media, isVideo = media_list[j]
 				try:
@@ -181,11 +182,19 @@ class TelegramBot(commands.Cog):
 				# 	logging.error("Timeout Error")
 				# 	await asyncio.sleep(10)
 				# 	continue
-				# except aiogram.utils.exceptions.TelegramAPIError as err:
-				# 	logging.error("Error INFO: %s" % str(err.args))
-				# 	logging.error("TelegramAPI Error")
-				# 	await asyncio.sleep(10)
-				# 	continue
+				except aiogram.utils.exceptions.TelegramAPIError as err:
+					logging.error("Error INFO: %s" % str(err.args))
+					if str(err.args) == "Bad Gateway":
+						if retry > 5:
+							logging.error("Max trials. Popping...")
+							medias.pop(0)
+							retry = 0
+							continue
+						retry += 1
+						logging.error("Bad Gateway")
+						await asyncio.sleep(10)
+						continue
+					raise err
 			return
 
 
@@ -205,6 +214,7 @@ class TelegramBot(commands.Cog):
 				else:
 					media_group.attach_photo(media, tweet_info)
 		
+		group_retry = 0
 		while True:
 			try:
 				# logging.info("Sending multiple medias...")
@@ -212,21 +222,30 @@ class TelegramBot(commands.Cog):
 				return
 			except aiogram.utils.exceptions.BadRequest as err:
 				logging.error("Bad Request: %s" % medias)
-			
+				retry = 0
 				while medias:
 					media_list = [medias[0]]
 					try:
 						await self.send_medias(author_id, guild_id, [media_list], tweet_info, channel_type)
 						medias.pop(0)
 						await asyncio.sleep(1)
+						retry = 0
 					except aiogram.utils.exceptions.RetryAfter as err:
 						logging.error("Try again in %d seconds." % err.timeout)
 						await asyncio.sleep(err.timeout)
-					# except aiogram.utils.exceptions.TelegramAPIError as err:
-					# 	logging.error("Error INFO: %s" % str(err.args))
-					# 	logging.error("TelegramAPI Error")
-					# 	await asyncio.sleep(10)
-					# 	continue
+					except aiogram.utils.exceptions.TelegramAPIError as err:
+						logging.error("Error INFO: %s" % str(err.args))
+						if str(err.args) == "Bad Gateway":
+							if retry > 5:
+								logging.error("Max trials. Popping...")
+								medias.pop(0)
+								retry = 0
+								continue
+							retry += 1
+							logging.error("Bad Gateway")
+							await asyncio.sleep(10)
+							continue
+						raise err
 					except:
 						medias.pop(0)
 				return
@@ -235,8 +254,16 @@ class TelegramBot(commands.Cog):
 			# 	logging.error("Timeout Error")
 			# 	await asyncio.sleep(10)
 			# 	continue
-			# except aiogram.utils.exceptions.TelegramAPIError as err:
-			# 	logging.error("Error INFO: %s" % str(err.args))
-			# 	logging.error("TelegramAPI Error")
-			# 	await asyncio.sleep(10)
-			# 	continue
+			except aiogram.utils.exceptions.TelegramAPIError as err:
+				logging.error("Error INFO: %s" % str(err.args))
+				if str(err.args) == "Bad Gateway":
+					if group_retry > 5:
+						logging.error("Max trials. Popping...")
+						medias.pop(0)
+						group_retry = 0
+						continue
+					group_retry += 1
+					logging.error("Bad Gateway")
+					await asyncio.sleep(10)
+					continue
+				raise err
