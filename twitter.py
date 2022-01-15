@@ -2,6 +2,7 @@
 
 import re
 import copy
+import time
 import tweepy
 import aiogram
 import asyncio
@@ -173,13 +174,13 @@ class Twitter(commands.Cog):
 				elif self.is_video_link(media.lower()) and forwarding_channels["vid"]:
 					new_message = await self.bot.get_channel(forwarding_channels["vid"]).send(media)
 				await message.delete()
-				await asyncio.sleep(0.3)
+				time.sleep(0.3)
 				
 				if not new_message: return
 				await new_message.add_reaction('❤️')
-				await asyncio.sleep(0.3)
+				time.sleep(0.3)
 				await new_message.add_reaction('💩')
-				await asyncio.sleep(0.3)
+				time.sleep(0.3)
 		logging.info("Successfully deleted %d messages." % len(messages))
 
 
@@ -240,137 +241,140 @@ class Twitter(commands.Cog):
 		# 	(message.channel.id not in self.guild_forwarding[str(message.guild.id)].values()) and \
 		# 	self.is_twitter_message(message):
 		# 	await message.add_reaction('✈️')
-		# 	await asyncio.sleep(0.3)
+		# 	time.sleep(0.3)
 		# 	await message.add_reaction('➡️')
-		# 	await asyncio.sleep(0.3)
+		# 	time.sleep(0.3)
 		# 	# await message.add_reaction('❌')
 		# 	# await asyncio.sleep(1)
 		if message.author.id != self.bot.user.id and message.channel.id == self.guild_forwarding[str(message.guild.id)]["pending"]:
 			await message.add_reaction('✈️')
 			# await message.add_reaction('❌')
-			# await asyncio.sleep(0.3)
+			# time.sleep(0.3)
 
 	
 	@commands.Cog.listener()
 	async def on_raw_reaction_add(self, reaction_payload):
 		if self.bot.command_prefix != "=": return
-		channel = await self.bot.fetch_channel(reaction_payload.channel_id)
-		message = await channel.fetch_message(reaction_payload.message_id)
-		emoji = str(reaction_payload.emoji)
-		user = await self.bot.fetch_user(reaction_payload.user_id)
-		if user.id == self.bot.user.id: return
+		try:
+			channel = await self.bot.fetch_channel(reaction_payload.channel_id)
+			message = await channel.fetch_message(reaction_payload.message_id)
+			emoji = str(reaction_payload.emoji)
+			user = await self.bot.fetch_user(reaction_payload.user_id)
+			if user.id == self.bot.user.id: return
 
-		if emoji == "✈️":
-			# logging.info("%s %s" % (self.guild_forwarding[str(message.guild.id)], self.is_twitter_message(message)))
-			if message.author.id == self.bot.user.id and \
-				self.is_twitter_message(message):
-				# logging.info("Fowarding to img/vid/pending channels")
-				new_message = None
-				media_list = self.get_medias(message)
-				forwarding_channels = self.guild_forwarding[str(message.guild.id)]
-				for media, type in media_list:
-					if type == "img" and forwarding_channels["img"]:
-						new_message = await self.bot.get_channel(forwarding_channels["img"]).send(media)
-					elif type == "vid" and forwarding_channels["vid"]:
-						new_message = await self.bot.get_channel(forwarding_channels["vid"]).send(media)
-					
-					if not new_message: continue
-					await new_message.add_reaction('❤️')
-					await asyncio.sleep(0.3)
-					await new_message.add_reaction('💩')
-					await asyncio.sleep(0.3)
-			elif message.channel.id == self.guild_forwarding[str(message.guild.id)]["pending"]:
-				# logging.info("Fowarding to img/vid channels")
-    
-				new_message = None
-				forwarding_channels = self.guild_forwarding[str(message.guild.id)]
-				media = message.content
-				if message.content:
-					media = message.content
-				elif message.attachments:
-					media = message.attachments[0].url
-				else: return
-				logging.info("Pending media: %s" % media)
-				if self.is_image_link(media.lower()) and forwarding_channels["img"]:
-					new_message = await self.bot.get_channel(forwarding_channels["img"]).send(media)
-				elif self.is_video_link(media.lower()) and forwarding_channels["vid"]:
-					new_message = await self.bot.get_channel(forwarding_channels["vid"]).send(media)
-				await message.delete()
-				await asyncio.sleep(0.3)
-				
-				if not new_message: return
-				await new_message.add_reaction('❤️')
-				await asyncio.sleep(0.3)
-				await new_message.add_reaction('💩')
-				await asyncio.sleep(0.3)
-					
-		elif emoji == "➡️":
-			# logging.info("%s %s" % (self.guild_forwarding[str(message.guild.id)], self.is_twitter_message(message)))
-			if self.is_twitter_message(message):
-				media_list = self.get_medias(message)
-				forwarding_channels = self.guild_forwarding[str(message.guild.id)]
-				for media, type in media_list:
+			if emoji == "✈️":
+				# logging.info("%s %s" % (self.guild_forwarding[str(message.guild.id)], self.is_twitter_message(message)))
+				if message.author.id == self.bot.user.id and \
+					self.is_twitter_message(message):
+					# logging.info("Fowarding to img/vid/pending channels")
 					new_message = None
-					if type == "img" and forwarding_channels["img"]:
+					media_list = self.get_medias(message)
+					forwarding_channels = self.guild_forwarding[str(message.guild.id)]
+					for media, type in media_list:
+						if type == "img" and forwarding_channels["img"]:
+							new_message = await self.bot.get_channel(forwarding_channels["img"]).send(media)
+						elif type == "vid" and forwarding_channels["vid"]:
+							new_message = await self.bot.get_channel(forwarding_channels["vid"]).send(media)
+						
+						if not new_message: continue
+						await new_message.add_reaction('❤️')
+						time.sleep(0.3)
+						await new_message.add_reaction('💩')
+						time.sleep(0.3)
+				elif message.channel.id == self.guild_forwarding[str(message.guild.id)]["pending"]:
+					# logging.info("Fowarding to img/vid channels")
+		
+					new_message = None
+					forwarding_channels = self.guild_forwarding[str(message.guild.id)]
+					media = message.content
+					if message.content:
+						media = message.content
+					elif message.attachments:
+						media = message.attachments[0].url
+					else: return
+					logging.info("Pending media: %s" % media)
+					if self.is_image_link(media.lower()) and forwarding_channels["img"]:
+						new_message = await self.bot.get_channel(forwarding_channels["img"]).send(media)
+					elif self.is_video_link(media.lower()) and forwarding_channels["vid"]:
+						new_message = await self.bot.get_channel(forwarding_channels["vid"]).send(media)
+					await message.delete()
+					time.sleep(0.3)
+					
+					if not new_message: return
+					await new_message.add_reaction('❤️')
+					time.sleep(0.3)
+					await new_message.add_reaction('💩')
+					time.sleep(0.3)
+						
+			elif emoji == "➡️":
+				# logging.info("%s %s" % (self.guild_forwarding[str(message.guild.id)], self.is_twitter_message(message)))
+				if self.is_twitter_message(message):
+					media_list = self.get_medias(message)
+					forwarding_channels = self.guild_forwarding[str(message.guild.id)]
+					for media, type in media_list:
+						new_message = None
+						if type == "img" and forwarding_channels["img"]:
+							if forwarding_channels["pending"]:
+								new_message = await self.bot.get_channel(forwarding_channels["pending"]).send(media)
+							else:
+								new_message = await self.bot.get_channel(forwarding_channels["img"]).send(media)
+						elif type == "vid" and forwarding_channels["vid"]:
+							if forwarding_channels["pending"]:
+								new_message = await self.bot.get_channel(forwarding_channels["pending"]).send(media)
+							else:
+								new_message = await self.bot.get_channel(forwarding_channels["vid"]).send(media)
+						time.sleep(0.3)
+						
+						if not new_message: continue
+						if forwarding_channels["pending"]:
+							await new_message.add_reaction('✈️')
+							time.sleep(0.3)
+						else:
+							await new_message.add_reaction('❤️')
+							time.sleep(0.3)
+							await new_message.add_reaction('💩')
+							time.sleep(0.3)
+						# await new_message.add_reaction('❌')
+						# time.sleep(0.3)
+				
+				else:			
+					new_message = None
+					media = message.content
+					if message.content:
+						media = message.content
+					elif message.attachments:
+						media = message.attachments[0].url
+					else: return
+					logging.info("Pending media: %s" % media)
+					forwarding_channels = self.guild_forwarding[str(message.guild.id)]
+					if self.is_image_link(media.lower()) and forwarding_channels["img"]:
 						if forwarding_channels["pending"]:
 							new_message = await self.bot.get_channel(forwarding_channels["pending"]).send(media)
 						else:
 							new_message = await self.bot.get_channel(forwarding_channels["img"]).send(media)
-					elif type == "vid" and forwarding_channels["vid"]:
+					elif self.is_video_link(media.lower()) and forwarding_channels["vid"]:
 						if forwarding_channels["pending"]:
-							new_message = await self.bot.get_channel(forwarding_channels["pending"]).send(media)
+								new_message = await self.bot.get_channel(forwarding_channels["pending"]).send(media)
 						else:
 							new_message = await self.bot.get_channel(forwarding_channels["vid"]).send(media)
-					await asyncio.sleep(0.3)
+					await message.delete()
+					time.sleep(0.3)
 					
-					if not new_message: continue
+					if not new_message: return
 					if forwarding_channels["pending"]:
 						await new_message.add_reaction('✈️')
-						await asyncio.sleep(0.3)
+						time.sleep(0.3)
 					else:
 						await new_message.add_reaction('❤️')
-						await asyncio.sleep(0.3)
+						time.sleep(0.3)
 						await new_message.add_reaction('💩')
-						await asyncio.sleep(0.3)
-					# await new_message.add_reaction('❌')
-					# await asyncio.sleep(0.3)
-			
-			else:			
-				new_message = None
-				media = message.content
-				if message.content:
-					media = message.content
-				elif message.attachments:
-					media = message.attachments[0].url
-				else: return
-				logging.info("Pending media: %s" % media)
-				forwarding_channels = self.guild_forwarding[str(message.guild.id)]
-				if self.is_image_link(media.lower()) and forwarding_channels["img"]:
-					if forwarding_channels["pending"]:
-						new_message = await self.bot.get_channel(forwarding_channels["pending"]).send(media)
-					else:
-						new_message = await self.bot.get_channel(forwarding_channels["img"]).send(media)
-				elif self.is_video_link(media.lower()) and forwarding_channels["vid"]:
-					if forwarding_channels["pending"]:
-							new_message = await self.bot.get_channel(forwarding_channels["pending"]).send(media)
-					else:
-						new_message = await self.bot.get_channel(forwarding_channels["vid"]).send(media)
+						time.sleep(0.3)
+							
+			elif emoji == '❌':
 				await message.delete()
-				await asyncio.sleep(0.3)
-				
-				if not new_message: return
-				if forwarding_channels["pending"]:
-					await new_message.add_reaction('✈️')
-					await asyncio.sleep(0.3)
-				else:
-					await new_message.add_reaction('❤️')
-					await asyncio.sleep(0.3)
-					await new_message.add_reaction('💩')
-					await asyncio.sleep(0.3)
-						
-		elif emoji == '❌':
-			await message.delete()
-			await asyncio.sleep(0.3)
+				time.sleep(0.3)
+		finally:
+			pass
 						
 	@commands.command(pass_context=True, help="bind as cache channel for forwarding")
 	async def bindPendingChannelHere(self, ctx: commands.Context):
@@ -520,13 +524,13 @@ class Twitter(commands.Cog):
 				# logging.info("Pushing to discord channel...")
 				# logging.info(media_list)
 				message = await push_to_discord.send("||https://www.twitter.com/%s/status/%s||\n%s" % (tweet.user.screen_name, tweet.id, "\n".join([m[0][0] for m in media_list])))
-				await asyncio.sleep(0.3)
+				time.sleep(0.3)
 				await message.add_reaction('✈️')
-				await asyncio.sleep(0.3)
+				time.sleep(0.3)
 				await message.add_reaction('➡️')
-				await asyncio.sleep(0.3)
+				time.sleep(0.3)
 				# await message.add_reaction('❌')
-				# await asyncio.sleep(0.3)
+				# time.sleep(0.3)
 
 			if sync_to_telegram:
 
