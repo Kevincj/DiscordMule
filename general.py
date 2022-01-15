@@ -37,29 +37,36 @@ class General(commands.Cog):
 
 	@commands.command(pass_context=True, help="delete # messages")
 	async def rm(self, ctx: commands.Context = None, *, message :str):
-	  try:
-	    count = int(message) +1
-	  except:
-	    await ctx.message.delete()
-	    return
+		try:
+			count = int(message) +1
+		except:
+			await ctx.message.delete()
+			return
 	  
-	  messages = await ctx.channel.history(limit=count).flatten()
-	  for msg in messages:
-	    await msg.delete()
-	  logging.info("Successfully deleted %d messages." % len(messages))
+		try:
+			
+			messages = await ctx.channel.history(limit=count).flatten()
+			for msg in messages:
+				await msg.delete()
+			logging.info("Successfully deleted %d messages." % len(messages))
+		except:
+			logging.info("Error while deleting...")
 
 
 
 	@commands.command(pass_context=True, help="delete nth message")
 	async def rmat(self, ctx: commands.Context = None, *, message :str):
-	  try:
-	    count = int(message)
-	  except:
-	    await ctx.message.delete()
-	    return
+		try:
+			count = int(message)
+		except:
+			await ctx.message.delete()
+			return
 
-	  messages = await ctx.channel.history(limit=count).flatten()
-	  msg = messages[-1]
-	  logging.info("Deleting:", type(msg), msg.content)
-	  await msg.delete()
-	  logging.info("Successfully deleted 1 message.")
+		try:
+			messages = await ctx.channel.history(limit=count).flatten()
+			msg = messages[-1]
+			logging.info("Deleting:", type(msg), msg.content)
+			await msg.delete()
+			logging.info("Successfully deleted 1 message.")
+		except:
+			logging.info("Error while deleting...")
