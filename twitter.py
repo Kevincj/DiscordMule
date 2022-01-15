@@ -47,6 +47,7 @@ class Twitter(commands.Cog):
   
 		self.load_guild_forwarding()
 		# logging.info(self.guild_forwarding)
+		self.SLEEP_INTERVAL = 0.5
   
 	def load_guild_forwarding(self):
 		for entry in self.db["guild_info"].find({}): 
@@ -174,13 +175,13 @@ class Twitter(commands.Cog):
 				elif self.is_video_link(media.lower()) and forwarding_channels["vid"]:
 					new_message = await self.bot.get_channel(forwarding_channels["vid"]).send(media)
 				await message.delete()
-				time.sleep(0.3)
+				time.time.sleep(self.SLEEP_INTERVAL)
 				
 				if not new_message: return
 				await new_message.add_reaction('❤️')
-				time.sleep(0.3)
+				time.time.sleep(self.SLEEP_INTERVAL)
 				await new_message.add_reaction('💩')
-				time.sleep(0.3)
+				time.time.sleep(self.SLEEP_INTERVAL)
 		logging.info("Successfully deleted %d messages." % len(messages))
 
 
@@ -241,15 +242,15 @@ class Twitter(commands.Cog):
 		# 	(message.channel.id not in self.guild_forwarding[str(message.guild.id)].values()) and \
 		# 	self.is_twitter_message(message):
 		# 	await message.add_reaction('✈️')
-		# 	time.sleep(0.3)
+		# 	time.time.sleep(self.SLEEP_INTERVAL)
 		# 	await message.add_reaction('➡️')
-		# 	time.sleep(0.3)
+		# 	time.time.sleep(self.SLEEP_INTERVAL)
 		# 	# await message.add_reaction('❌')
 		# 	# await asyncio.sleep(1)
 		if message.author.id != self.bot.user.id and message.channel.id == self.guild_forwarding[str(message.guild.id)]["pending"]:
 			await message.add_reaction('✈️')
 			# await message.add_reaction('❌')
-			# time.sleep(0.3)
+			# time.time.sleep(self.SLEEP_INTERVAL)
 
 	
 	@commands.Cog.listener()
@@ -278,9 +279,9 @@ class Twitter(commands.Cog):
 						
 						if not new_message: continue
 						await new_message.add_reaction('❤️')
-						time.sleep(0.3)
+						time.time.sleep(self.SLEEP_INTERVAL)
 						await new_message.add_reaction('💩')
-						time.sleep(0.3)
+						time.time.sleep(self.SLEEP_INTERVAL)
 				elif message.channel.id == self.guild_forwarding[str(message.guild.id)]["pending"]:
 					# logging.info("Fowarding to img/vid channels")
 		
@@ -298,13 +299,13 @@ class Twitter(commands.Cog):
 					elif self.is_video_link(media.lower()) and forwarding_channels["vid"]:
 						new_message = await self.bot.get_channel(forwarding_channels["vid"]).send(media)
 					await message.delete()
-					time.sleep(0.3)
+					time.time.sleep(self.SLEEP_INTERVAL)
 					
 					if not new_message: return
 					await new_message.add_reaction('❤️')
-					time.sleep(0.3)
+					time.time.sleep(self.SLEEP_INTERVAL)
 					await new_message.add_reaction('💩')
-					time.sleep(0.3)
+					time.time.sleep(self.SLEEP_INTERVAL)
 						
 			elif emoji == "➡️":
 				# logging.info("%s %s" % (self.guild_forwarding[str(message.guild.id)], self.is_twitter_message(message)))
@@ -323,19 +324,19 @@ class Twitter(commands.Cog):
 								new_message = await self.bot.get_channel(forwarding_channels["pending"]).send(media)
 							else:
 								new_message = await self.bot.get_channel(forwarding_channels["vid"]).send(media)
-						time.sleep(0.3)
+						time.time.sleep(self.SLEEP_INTERVAL)
 						
 						if not new_message: continue
 						if forwarding_channels["pending"]:
 							await new_message.add_reaction('✈️')
-							time.sleep(0.3)
+							time.time.sleep(self.SLEEP_INTERVAL)
 						else:
 							await new_message.add_reaction('❤️')
-							time.sleep(0.3)
+							time.time.sleep(self.SLEEP_INTERVAL)
 							await new_message.add_reaction('💩')
-							time.sleep(0.3)
+							time.time.sleep(self.SLEEP_INTERVAL)
 						# await new_message.add_reaction('❌')
-						# time.sleep(0.3)
+						# time.time.sleep(self.SLEEP_INTERVAL)
 				
 				else:			
 					new_message = None
@@ -358,21 +359,21 @@ class Twitter(commands.Cog):
 						else:
 							new_message = await self.bot.get_channel(forwarding_channels["vid"]).send(media)
 					await message.delete()
-					time.sleep(0.3)
+					time.time.sleep(self.SLEEP_INTERVAL)
 					
 					if not new_message: return
 					if forwarding_channels["pending"]:
 						await new_message.add_reaction('✈️')
-						time.sleep(0.3)
+						time.time.sleep(self.SLEEP_INTERVAL)
 					else:
 						await new_message.add_reaction('❤️')
-						time.sleep(0.3)
+						time.time.sleep(self.SLEEP_INTERVAL)
 						await new_message.add_reaction('💩')
-						time.sleep(0.3)
+						time.time.sleep(self.SLEEP_INTERVAL)
 							
 			elif emoji == '❌':
 				await message.delete()
-				time.sleep(0.3)
+				time.time.sleep(self.SLEEP_INTERVAL)
 		finally:
 			pass
 						
@@ -524,13 +525,13 @@ class Twitter(commands.Cog):
 				# logging.info("Pushing to discord channel...")
 				# logging.info(media_list)
 				message = await push_to_discord.send("||https://www.twitter.com/%s/status/%s||\n%s" % (tweet.user.screen_name, tweet.id, "\n".join([m[0][0] for m in media_list])))
-				time.sleep(0.3)
+				time.time.sleep(self.SLEEP_INTERVAL)
 				await message.add_reaction('✈️')
-				time.sleep(0.3)
+				time.time.sleep(self.SLEEP_INTERVAL)
 				await message.add_reaction('➡️')
-				time.sleep(0.3)
+				time.time.sleep(self.SLEEP_INTERVAL)
 				# await message.add_reaction('❌')
-				# time.sleep(0.3)
+				# time.time.sleep(self.SLEEP_INTERVAL)
 
 			if sync_to_telegram:
 
