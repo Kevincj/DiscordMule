@@ -17,6 +17,10 @@ class General(commands.Cog):
 	
 
 	
+	@commands.Cog.listener()
+	async def on_ready(self):
+		
+		logging.info("Logged in as %s [%s]" % (self.bot.user.id, self.bot.user))
 
 	@commands.command(pass_context=True, help="show a kaomoji")
 	async def hi(self, ctx: commands.Context):
@@ -28,10 +32,6 @@ class General(commands.Cog):
 
 
 
-	@commands.Cog.listener()
-	async def on_ready(self):
-		
-		logging.info("Logged in as %s [%s]" % (self.bot.user.id, self.bot.user))
 
 
 
