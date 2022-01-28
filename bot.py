@@ -93,7 +93,7 @@ def main():
 	async def on_message(message: discord.Message) -> None:
 
 		# if message.author != bot.user:
-		# 	logging.info("Received from %s: %s" % (message.author, message.content))
+		# 	logging.info("Received from %s[%s]: %s" % (message.author, message.channel.id, message.content))
 
 		await bot.process_commands(message)
 
@@ -102,12 +102,15 @@ def main():
 	config = loadConfig(file_name = "bot.conf")
 
 	db = loadDB()
+ 
 
 
 
-	bot.add_cog(General(bot, db))
-	bot.add_cog(Role(bot, db))
-	bot.add_cog(Voice(bot, config, db))
+	if config["Discord"]["HandleCommands"] == True:
+		bot.add_cog(General(bot, db))
+		bot.add_cog(Role(bot, db))
+		bot.add_cog(Voice(bot, config, db))
+  
 	bot.add_cog(Twitter(bot, config, db))
 	bot.add_cog(TelegramBot(bot, config, db))
 
