@@ -63,6 +63,8 @@ class TelegramBot(commands.Cog):
 
 
 	async def bindTelegram(self, ctx: commands.Context, channel_type: str, arg: str):
+		if self.config["Discord"]["HandleCommands"] != "True": return
+
 		logging.info("Binding Telegram %s channel..." % channel_type)
 
 		author = ctx.message.author
@@ -87,12 +89,16 @@ class TelegramBot(commands.Cog):
 
 	@commands.command(pass_context=True, help="bind telegram like channel")
 	async def bindLikeTelegram(self, ctx: commands.Context, *, arg:str):
+		if self.config["Discord"]["HandleCommands"] != "True": return
+
 		await self.bindTelegram(ctx, "like_channel", arg)
 
 
 
 	@commands.command(pass_context=True, help="bind telegram list channel")
 	async def bindListTelegram(self, ctx: commands.Context, *, arg:str):
+		if self.config["Discord"]["HandleCommands"] != "True": return
+
 		await self.bindTelegram(ctx, "list_channel", arg)
 
 
@@ -100,17 +106,21 @@ class TelegramBot(commands.Cog):
 
 	@commands.command(pass_context=True, help="bind telegram focus channel")
 	async def bindFocusTelegram(self, ctx: commands.Context, *, arg:str):
+		if self.config["Discord"]["HandleCommands"] != "True": return
+
 		await self.bindTelegram(ctx, "focus_channel", arg)
 
 
 
 	@commands.command(pass_context=True, help="bind telegram timeline channel")
 	async def bindTimelineTelegram(self, ctx: commands.Context, *, arg:str):
+		if self.config["Discord"]["HandleCommands"] != "True": return
 
 		await self.bindTelegram(ctx, "tl_channel", arg)
 
 	@commands.command(pass_context=True, help="bind telegram self-like channel")
 	async def bindTimelineTelegram(self, ctx: commands.Context, *, arg:str):
+		if self.config["Discord"]["HandleCommands"] != "True": return
 
 		await self.bindTelegram(ctx, "self_like_channel", arg)
 

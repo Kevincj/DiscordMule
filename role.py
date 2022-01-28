@@ -101,6 +101,7 @@ class Role(commands.Cog):
 		# Retrieve content
 		content = ctx.message.content
 		emo = getEmoji(content)
+
 		
 
 		# Extract role and emoji
