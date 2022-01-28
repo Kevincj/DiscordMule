@@ -22,6 +22,7 @@ class General(commands.Cog):
 		
 		logging.info("Logged in as %s [%s]" % (self.bot.user.id, self.bot.user))
 
+
 	@commands.command(pass_context=True, help="show a kaomoji")
 	async def hi(self, ctx: commands.Context):
 
@@ -29,10 +30,6 @@ class General(commands.Cog):
 
 		await ctx.message.delete()
 		await ctx.send(self.kao())
-
-
-
-
 
 
 	@commands.command(pass_context=True, help="delete # messages")
