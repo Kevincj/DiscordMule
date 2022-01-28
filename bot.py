@@ -19,7 +19,6 @@ def saveConfig():
 
 	global config, config_file
 
-
 	logging.info("Saving configuration...")
 
 	with open(config_file, "w") as f:
@@ -105,12 +104,18 @@ def main():
 	db = loadDB()
  
 
+	@bot.event
+	async def on_ready():
+		logging.info("Logged in as %s [%s]" % (bot.user.id, bot.user))	
 
 
-	if config["Discord"]["HandleCommands"] == True:
+	if config["Discord"]["HandleCommands"] == "True":
+		logging.info("Commands enabled.")
 		bot.add_cog(General(bot, db))
 		bot.add_cog(Role(bot, db))
 		bot.add_cog(Voice(bot, config, db))
+	else:
+		logging.info("Commands disabled.")
   
 	bot.add_cog(Twitter(bot, config, db))
 	bot.add_cog(TelegramBot(bot, config, db))
