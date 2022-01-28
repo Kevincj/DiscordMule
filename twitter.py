@@ -58,6 +58,7 @@ class Twitter(commands.Cog):
   
 	@commands.command(pass_context=True, help="request a Twitter connection")
 	async def connectTwitter(self, ctx: commands.Context):
+		if self.config["Discord"]["HandleCommands"] != "True": return
 
 		author = ctx.message.author
 
@@ -76,6 +77,7 @@ class Twitter(commands.Cog):
 
 	@commands.command(pass_context=True, help="bind Twitter account")
 	async def bindTwitter(self, ctx: commands.Context, *, arg: str):
+		if self.config["Discord"]["HandleCommands"] != "True": return
 		
 		author, guild = ctx.message.author, ctx.guild
 		user_id, guild_id = str(author.id), str(guild.id)
@@ -155,34 +157,7 @@ class Twitter(commands.Cog):
 		return self.db["twitter_info"].find_one({"user_id": user_id, "guild_id": guild_id}, fields_dict)
 
 
-	@commands.command(pass_context=True, help="flush cache channel")
-	async def flush(self, ctx: commands.Context = None):
-     
-		if ctx.channel.id == self.guild_forwarding[str(ctx.guild.id)]["pending"]:
-			messages = await ctx.channel.history(limit=100).flatten()
-			for message in messages:
-				new_message = None
-				forwarding_channels = self.guild_forwarding[str(message.guild.id)]
-				media = message.content
-				if message.content:
-					media = message.content
-				elif message.attachments:
-					media = message.attachments[0].url
-				else: return
-				logging.info("Pending media: %s" % media)
-				if self.is_image_link(media.lower()) and forwarding_channels["img"]:
-					new_message = await self.bot.get_channel(forwarding_channels["img"]).send(media)
-				elif self.is_video_link(media.lower()) and forwarding_channels["vid"]:
-					new_message = await self.bot.get_channel(forwarding_channels["vid"]).send(media)
-				await message.delete()
-				time.sleep(self.SLEEP_INTERVAL)
-				
-				if not new_message: return
-				await new_message.add_reaction('❤️')
-				time.sleep(self.SLEEP_INTERVAL)
-				await new_message.add_reaction('💩')
-				time.sleep(self.SLEEP_INTERVAL)
-		logging.info("Successfully deleted %d messages." % len(messages))
+	
 
 
 	@tasks.loop(minutes=60 * 3)
@@ -197,10 +172,10 @@ class Twitter(commands.Cog):
 					tmp_status[key][entry]["discord"] = status["discord"]
 					tmp_status[key][entry]["telegram"] = status["telegram"]
 	
-			for key, channel_status in tmp_status.items():
-				for entry, status in channel_status.items():
-					if status["telegram"]:
-						await self.get_tweets(key[0], key[1], entry, sync_to_telegram = True)
+			# for key, channel_status in tmp_status.items():
+			# 	for entry, status in channel_status.items():
+			# 		if status["telegram"]:
+			# 			await self.get_tweets(key[0], key[1], entry, sync_to_telegram = True)
 			for key, channel_status in tmp_status.items():
 				for entry, status in channel_status.items():
 					if status["discord"]:
@@ -368,9 +343,41 @@ class Twitter(commands.Cog):
 				time.sleep(self.SLEEP_INTERVAL)
 		finally:
 			pass
+
+	@commands.command(pass_context=True, help="flush cache channel")
+	async def flush(self, ctx: commands.Context = None):
+		if self.config["Discord"]["HandleCommands"] != "True": return
+     
+		if ctx.channel.id == self.guild_forwarding[str(ctx.guild.id)]["pending"]:
+			messages = await ctx.channel.history(limit=100).flatten()
+			for message in messages:
+				new_message = None
+				forwarding_channels = self.guild_forwarding[str(message.guild.id)]
+				media = message.content
+				if message.content:
+					media = message.content
+				elif message.attachments:
+					media = message.attachments[0].url
+				else: return
+				logging.info("Pending media: %s" % media)
+				if self.is_image_link(media.lower()) and forwarding_channels["img"]:
+					new_message = await self.bot.get_channel(forwarding_channels["img"]).send(media)
+				elif self.is_video_link(media.lower()) and forwarding_channels["vid"]:
+					new_message = await self.bot.get_channel(forwarding_channels["vid"]).send(media)
+				await message.delete()
+				time.sleep(self.SLEEP_INTERVAL)
+				
+				if not new_message: return
+				await new_message.add_reaction('❤️')
+				time.sleep(self.SLEEP_INTERVAL)
+				await new_message.add_reaction('💩')
+				time.sleep(self.SLEEP_INTERVAL)
+		logging.info("Successfully deleted %d messages." % len(messages))
 						
 	@commands.command(pass_context=True, help="bind as cache channel for forwarding")
 	async def bindPendingChannelHere(self, ctx: commands.Context):
+		if self.config["Discord"]["HandleCommands"] != "True": return
+
 		author, guild = ctx.message.author, ctx.guild
 		user_id, guild_id = str(author.id), str(guild.id)
   
@@ -394,6 +401,8 @@ class Twitter(commands.Cog):
 
 	@commands.command(pass_context=True, help="bind as image channel for forwarding")
 	async def bindImageChannelHere(self, ctx: commands.Context):
+		if self.config["Discord"]["HandleCommands"] != "True": return
+
 		author, guild = ctx.message.author, ctx.guild
 		user_id, guild_id = str(author.id), str(guild.id)
   
@@ -417,6 +426,8 @@ class Twitter(commands.Cog):
 
 	@commands.command(pass_context=True, help="bind as video channel for forwarding")
 	async def bindVideoChannelHere(self, ctx: commands.Context):
+		if self.config["Discord"]["HandleCommands"] != "True": return
+		
 		author, guild = ctx.message.author, ctx.guild
 		user_id, guild_id = str(author.id), str(guild.id)
   
