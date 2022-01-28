@@ -40,7 +40,7 @@ class Twitter(commands.Cog):
 		self.list_link_pattern = re.compile("https?:\/\/(www\.)?twitter.com\/i\/lists\/(\w*)$")
 		self.media_forwarding_pattern = re.compile("\|\|http.+[^\|]+\|\|")
 
-
+		
 		self.CATEGORIES = ["self_like_info", "list_info", "like_info", "focus_info", "timeline_info"]
 
 		self.RATE_LIMIT_TL = 15
@@ -238,17 +238,7 @@ class Twitter(commands.Cog):
   
 	@commands.Cog.listener()
 	async def on_message(self, message):
-		
-		if self.bot.command_prefix != "=": return
-		# if message.author.id == self.bot.user.id and \
-		# 	(message.channel.id not in self.guild_forwarding[str(message.guild.id)].values()) and \
-		# 	self.is_twitter_message(message):
-		# 	await message.add_reaction('✈️')
-		# 	time.sleep(self.SLEEP_INTERVAL)
-		# 	await message.add_reaction('➡️')
-		# 	time.sleep(self.SLEEP_INTERVAL)
-		# 	# await message.add_reaction('❌')
-		# 	# await asyncio.sleep(1)
+		if self.config["Discord"]["HandleCommands"] != "True": return
 		if message.author.id != self.bot.user.id and message.channel.id == self.guild_forwarding[str(message.guild.id)]["pending"]:
 			await message.add_reaction('✈️')
 			# await message.add_reaction('❌')
@@ -257,7 +247,7 @@ class Twitter(commands.Cog):
 	
 	@commands.Cog.listener()
 	async def on_raw_reaction_add(self, reaction_payload):
-		if self.bot.command_prefix != "=": return
+		if self.config["Discord"]["HandleCommands"] != "True": return
 		try:
 			channel = await self.bot.fetch_channel(reaction_payload.channel_id)
 			message = await channel.fetch_message(reaction_payload.message_id)
