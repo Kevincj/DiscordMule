@@ -89,7 +89,7 @@ class Role(commands.Cog):
 	@commands.command(pass_context=True, help="bind a role with emoji")
 	@commands.has_permissions(manage_roles=True)
 	async def roleBind(self, ctx: commands.Context):
-    
+
 
 		def getEmoji(s):
 			emo = [c for c in s if c in emoji.UNICODE_EMOJI["en"]]
@@ -175,6 +175,7 @@ class Role(commands.Cog):
 			user = await self.bot.fetch_user(reaction_payload.user_id)
 			if user == self.bot.user:
 				return
+
 
 			guild = await self.bot.fetch_guild(reaction_payload.guild_id)
 			channel = await self.bot.fetch_channel(reaction_payload.channel_id)
