@@ -54,7 +54,7 @@ class TelegramBot(commands.Cog):
 				self.bot.get_cog("Twitter").sync_status[(entry["user_id"], entry["guild_id"])]["list_info"]["telegram"] = True
 				sync_needed = True
 			pass
-		if sync_needed: 
+		if self.config["Twitter"]["PushToTelegram"] != "00000" and sync_needed: 
 			await self.bot.get_cog("Twitter").sync.start()
 
 
