@@ -19,6 +19,7 @@ def saveConfig():
 
 	global config, config_file
 
+
 	logging.info("Saving configuration...")
 
 	with open(config_file, "w") as f:
