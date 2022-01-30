@@ -386,27 +386,44 @@ class Twitter(commands.Cog):
 	@commands.command(pass_context=True, help="flush cache channel")
 	async def flush(self, ctx: commands.Context = None):
 		if self.config["Discord"]["HandleCommands"] != "True": return
-     
+	
+		try:
+			await ctx.message.delete()
+		except:
+			pass
+
+		forwarding_channels = self.guild_forwarding[str(ctx.guild.id)]
 		if ctx.channel.id == self.guild_forwarding[str(ctx.guild.id)]["pending"]:
 			messages = await ctx.channel.history(limit=100).flatten()
 			for message in messages:
 				new_message = None
-				media_list = self.get_medias(message)
-				forwarding_channels = self.guild_forwarding[str(message.guild.id)]
-				for media, type in media_list:
-					if type == "img" and forwarding_channels["img"]:
-						new_message = await self.bot.get_channel(forwarding_channels["img"]).send(media)
-					elif type == "vid" and forwarding_channels["vid"]:
-						new_message = await self.bot.get_channel(forwarding_channels["vid"]).send(media)
-					
-					if not new_message: continue
-					try:
-						await new_message.add_reaction('❤️')
-						time.sleep(self.SLEEP_INTERVAL)
-						await new_message.add_reaction('💩')
-						time.sleep(self.SLEEP_INTERVAL)
-					except:
-						pass
+				media = message.content
+				if message.content:
+					media = message.content
+				elif message.attachments:
+					media = message.attachments[0].url
+				else: continue
+				logging.info("Pending media: %s" % media)
+				if self.is_image_link(media.lower()) and forwarding_channels["img"]:
+					new_message = await self.bot.get_channel(forwarding_channels["img"]).send(media)
+				elif self.is_video_link(media.lower()) and forwarding_channels["vid"]:
+					new_message = await self.bot.get_channel(forwarding_channels["vid"]).send(media)
+
+				try:
+					await message.delete()
+					time.sleep(self.SLEEP_INTERVAL)
+				except:
+					pass
+				
+				if not new_message: return
+
+				try:
+					await new_message.add_reaction('❤️')
+					time.sleep(self.SLEEP_INTERVAL)
+					await new_message.add_reaction('💩')
+					time.sleep(self.SLEEP_INTERVAL)
+				except:
+					pass
 			logging.info("Successfully fowarded %d messages." % len(messages))
 						
 	@commands.command(pass_context=True, help="bind as cache channel for forwarding")
