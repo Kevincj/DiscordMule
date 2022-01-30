@@ -2,6 +2,7 @@
 
 import re
 import copy
+from sre_parse import CATEGORIES
 import time
 import tweepy
 import aiogram
@@ -47,7 +48,7 @@ class Twitter(commands.Cog):
   
 		self.load_guild_forwarding()
 		# logging.info(self.guild_forwarding)
-		self.SLEEP_INTERVAL = 0.5
+		self.SLEEP_INTERVAL = 0.7
   
 	def load_guild_forwarding(self):
 		for entry in self.db["guild_info"].find({}): 
@@ -171,15 +172,23 @@ class Twitter(commands.Cog):
 				for entry, status in channel_status.items():
 					tmp_status[key][entry]["discord"] = status["discord"]
 					tmp_status[key][entry]["telegram"] = status["telegram"]
-	
-			# for key, channel_status in tmp_status.items():
-			# 	for entry, status in channel_status.items():
-			# 		if status["telegram"]:
-			# 			await self.get_tweets(key[0], key[1], entry, sync_to_telegram = True)
-			for key, channel_status in tmp_status.items():
-				for entry, status in channel_status.items():
-					if status["discord"]:
-						await self.get_tweets(key[0], key[1], entry, push_to_discord = status["discord"])
+
+			if self.config["Twitter"]["PushToTelegram"] != "00000":
+				push_status = {ctg: True if self.config["Twitter"]["PushToTelegram"][i] == "1" else False for i,ctg in enumerate(self.CATEGORIES[::-1])}
+				logging.info("Telegram: %s" % push_status)
+				for key, channel_status in tmp_status.items():
+					for entry, status in channel_status.items():
+						if push_status[entry] and status["telegram"]:
+							logging.info("%s telegram enabled" % entry)
+							await self.get_tweets(key[0], key[1], entry, sync_to_telegram = True)
+			if self.config["Twitter"]["PushToDiscord"] != "00000":
+				push_status = {ctg: True if self.config["Twitter"]["PushToDiscord"][i] == "1" else False for i,ctg in enumerate(self.CATEGORIES[::-1])}
+				logging.info("Discord: %s" % push_status)
+				for key, channel_status in tmp_status.items():
+					for entry, status in channel_status.items():
+						if push_status[entry] and status["discord"]:
+							logging.info("%s discord enabled" % entry)
+							await self.get_tweets(key[0], key[1], entry, push_to_discord = status["discord"])
 			logging.info("Finished sync.")
 		except Exception as err:
 			logging.info(err)
@@ -341,6 +350,8 @@ class Twitter(commands.Cog):
 			elif emoji == '❌':
 				await message.delete()
 				time.sleep(self.SLEEP_INTERVAL)
+		except:
+			pass
 		finally:
 			pass
 
@@ -427,7 +438,7 @@ class Twitter(commands.Cog):
 	@commands.command(pass_context=True, help="bind as video channel for forwarding")
 	async def bindVideoChannelHere(self, ctx: commands.Context):
 		if self.config["Discord"]["HandleCommands"] != "True": return
-		
+
 		author, guild = ctx.message.author, ctx.guild
 		user_id, guild_id = str(author.id), str(guild.id)
   
