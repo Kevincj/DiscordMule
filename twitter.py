@@ -48,7 +48,7 @@ class Twitter(commands.Cog):
   
 		self.load_guild_forwarding()
 		# logging.info(self.guild_forwarding)
-		self.SLEEP_INTERVAL = 0.7
+		self.SLEEP_INTERVAL = 1.0
   
 	def load_guild_forwarding(self):
 		for entry in self.db["guild_info"].find({}): 
@@ -175,19 +175,19 @@ class Twitter(commands.Cog):
 
 			if self.config["Twitter"]["PushToTelegram"] != "00000":
 				push_status = {ctg: True if self.config["Twitter"]["PushToTelegram"][i] == "1" else False for i,ctg in enumerate(self.CATEGORIES[::-1])}
-				logging.info("Telegram: %s" % push_status)
+				# logging.info("Telegram: %s" % push_status)
 				for key, channel_status in tmp_status.items():
 					for entry, status in channel_status.items():
 						if push_status[entry] and status["telegram"]:
-							logging.info("%s telegram enabled" % entry)
+							# logging.info("%s telegram enabled" % entry)
 							await self.get_tweets(key[0], key[1], entry, sync_to_telegram = True)
 			if self.config["Twitter"]["PushToDiscord"] != "00000":
 				push_status = {ctg: True if self.config["Twitter"]["PushToDiscord"][i] == "1" else False for i,ctg in enumerate(self.CATEGORIES[::-1])}
-				logging.info("Discord: %s" % push_status)
+				# logging.info("Discord: %s" % push_status)
 				for key, channel_status in tmp_status.items():
 					for entry, status in channel_status.items():
 						if push_status[entry] and status["discord"]:
-							logging.info("%s discord enabled" % entry)
+							# logging.info("%s discord enabled" % entry)
 							await self.get_tweets(key[0], key[1], entry, push_to_discord = status["discord"])
 			logging.info("Finished sync.")
 		except Exception as err:
@@ -224,7 +224,10 @@ class Twitter(commands.Cog):
 	async def on_message(self, message):
 		if self.config["Discord"]["HandleCommands"] != "True": return
 		if message.author.id != self.bot.user.id and message.channel.id == self.guild_forwarding[str(message.guild.id)]["pending"]:
-			await message.add_reaction('✈️')
+			try:
+				await message.add_reaction('✈️')
+			except:
+				pass
 			# await message.add_reaction('❌')
 			# time.sleep(self.SLEEP_INTERVAL)
 
@@ -254,10 +257,13 @@ class Twitter(commands.Cog):
 							new_message = await self.bot.get_channel(forwarding_channels["vid"]).send(media)
 						
 						if not new_message: continue
-						await new_message.add_reaction('❤️')
-						time.sleep(self.SLEEP_INTERVAL)
-						await new_message.add_reaction('💩')
-						time.sleep(self.SLEEP_INTERVAL)
+						try:
+							await new_message.add_reaction('❤️')
+							time.sleep(self.SLEEP_INTERVAL)
+							await new_message.add_reaction('💩')
+							time.sleep(self.SLEEP_INTERVAL)
+						except:
+							pass
 				elif message.channel.id == self.guild_forwarding[str(message.guild.id)]["pending"]:
 					# logging.info("Fowarding to img/vid channels")
 		
@@ -274,15 +280,23 @@ class Twitter(commands.Cog):
 						new_message = await self.bot.get_channel(forwarding_channels["img"]).send(media)
 					elif self.is_video_link(media.lower()) and forwarding_channels["vid"]:
 						new_message = await self.bot.get_channel(forwarding_channels["vid"]).send(media)
-					await message.delete()
-					time.sleep(self.SLEEP_INTERVAL)
+
+					try:
+						await message.delete()
+						time.sleep(self.SLEEP_INTERVAL)
+					except:
+						pass
 					
 					if not new_message: return
-					await new_message.add_reaction('❤️')
-					time.sleep(self.SLEEP_INTERVAL)
-					await new_message.add_reaction('💩')
-					time.sleep(self.SLEEP_INTERVAL)
-						
+
+					try:
+						await new_message.add_reaction('❤️')
+						time.sleep(self.SLEEP_INTERVAL)
+						await new_message.add_reaction('💩')
+						time.sleep(self.SLEEP_INTERVAL)
+					except:
+						pass
+							
 			elif emoji == "➡️":
 				# logging.info("%s %s" % (self.guild_forwarding[str(message.guild.id)], self.is_twitter_message(message)))
 				if self.is_twitter_message(message):
@@ -334,21 +348,35 @@ class Twitter(commands.Cog):
 								new_message = await self.bot.get_channel(forwarding_channels["pending"]).send(media)
 						else:
 							new_message = await self.bot.get_channel(forwarding_channels["vid"]).send(media)
-					await message.delete()
-					time.sleep(self.SLEEP_INTERVAL)
+					try:
+						await message.delete()
+						time.sleep(self.SLEEP_INTERVAL)
+					except:
+						pass
 					
 					if not new_message: return
-					if forwarding_channels["pending"]:
-						await new_message.add_reaction('✈️')
-						time.sleep(self.SLEEP_INTERVAL)
-					else:
-						await new_message.add_reaction('❤️')
-						time.sleep(self.SLEEP_INTERVAL)
-						await new_message.add_reaction('💩')
-						time.sleep(self.SLEEP_INTERVAL)
+
+					try:
+						if forwarding_channels["pending"]:
+							await new_message.add_reaction('✈️')
+							time.sleep(self.SLEEP_INTERVAL)
+						else:
+							await new_message.add_reaction('❤️')
+							time.sleep(self.SLEEP_INTERVAL)
+							await new_message.add_reaction('💩')
+							time.sleep(self.SLEEP_INTERVAL)
+					except:
+						pass
+				
+					
 							
 			elif emoji == '❌':
-				await message.delete()
+				try:
+					await message.delete()
+					time.sleep(self.SLEEP_INTERVAL)
+				except:
+					pass
+					
 				time.sleep(self.SLEEP_INTERVAL)
 		except:
 			pass
@@ -363,27 +391,23 @@ class Twitter(commands.Cog):
 			messages = await ctx.channel.history(limit=100).flatten()
 			for message in messages:
 				new_message = None
+				media_list = self.get_medias(message)
 				forwarding_channels = self.guild_forwarding[str(message.guild.id)]
-				media = message.content
-				if message.content:
-					media = message.content
-				elif message.attachments:
-					media = message.attachments[0].url
-				else: return
-				logging.info("Pending media: %s" % media)
-				if self.is_image_link(media.lower()) and forwarding_channels["img"]:
-					new_message = await self.bot.get_channel(forwarding_channels["img"]).send(media)
-				elif self.is_video_link(media.lower()) and forwarding_channels["vid"]:
-					new_message = await self.bot.get_channel(forwarding_channels["vid"]).send(media)
-				await message.delete()
-				time.sleep(self.SLEEP_INTERVAL)
-				
-				if not new_message: return
-				await new_message.add_reaction('❤️')
-				time.sleep(self.SLEEP_INTERVAL)
-				await new_message.add_reaction('💩')
-				time.sleep(self.SLEEP_INTERVAL)
-		logging.info("Successfully deleted %d messages." % len(messages))
+				for media, type in media_list:
+					if type == "img" and forwarding_channels["img"]:
+						new_message = await self.bot.get_channel(forwarding_channels["img"]).send(media)
+					elif type == "vid" and forwarding_channels["vid"]:
+						new_message = await self.bot.get_channel(forwarding_channels["vid"]).send(media)
+					
+					if not new_message: continue
+					try:
+						await new_message.add_reaction('❤️')
+						time.sleep(self.SLEEP_INTERVAL)
+						await new_message.add_reaction('💩')
+						time.sleep(self.SLEEP_INTERVAL)
+					except:
+						pass
+			logging.info("Successfully fowarded %d messages." % len(messages))
 						
 	@commands.command(pass_context=True, help="bind as cache channel for forwarding")
 	async def bindPendingChannelHere(self, ctx: commands.Context):
@@ -540,10 +564,13 @@ class Twitter(commands.Cog):
 				# logging.info(media_list)
 				message = await push_to_discord.send("||https://www.twitter.com/%s/status/%s||\n%s" % (tweet.user.screen_name, tweet.id, "\n".join([m[0][0] for m in media_list])))
 				time.sleep(self.SLEEP_INTERVAL)
-				await message.add_reaction('✈️')
-				time.sleep(self.SLEEP_INTERVAL)
-				await message.add_reaction('➡️')
-				time.sleep(self.SLEEP_INTERVAL)
+				try:
+					await message.add_reaction('✈️')
+					time.sleep(self.SLEEP_INTERVAL)
+					await message.add_reaction('➡️')
+					time.sleep(self.SLEEP_INTERVAL)
+				except:
+					pass
 				# await message.add_reaction('❌')
 				# time.sleep(self.SLEEP_INTERVAL)
 
@@ -678,35 +705,40 @@ class Twitter(commands.Cog):
 					for user_name, sync_info in query_result[category].items():
 						await asyncio.sleep(15)
 
-						logging.info("Acquiring focused users %s..." % user_name)
-						if push_to_discord:
-							max_id, min_id = sync_info["max_id"], sync_info["min_id"]
+						try:
+							logging.info("Acquiring focused users %s..." % user_name)
+							if push_to_discord:
+								max_id, min_id = sync_info["max_id"], sync_info["min_id"]
 
-						elif sync_to_telegram:
-							max_id, min_id = sync_info["max_sync_id"], sync_info["min_sync_id"]
-						max_count = MAX_DISCORD_COUNT if push_to_discord else MAX_TELEGRAM_COUNT
+							elif sync_to_telegram:
+								max_id, min_id = sync_info["max_sync_id"], sync_info["min_sync_id"]
+							max_count = MAX_DISCORD_COUNT if push_to_discord else MAX_TELEGRAM_COUNT
 
-						if reverse and min_id > 0:
-							update_min = True
-							tweets = list(tweepy.Cursor(api.user_timeline, screen_name = user_name, max_id = min_id - 1, count= max_count, exclude_replies = True).items())
-						elif (not reverse) and max_id > 0:
-							update_max = True
-							tweets = list(tweepy.Cursor(api.user_timeline, screen_name = user_name, since_id = max_id, count= max_count, exclude_replies = True).items())
-						else:
-							update_max = True
-							tweets = list(tweepy.Cursor(api.user_timeline, screen_name = user_name, count= max_count, exclude_replies = True).items())
+							if reverse and min_id > 0:
+								update_min = True
+								tweets = list(tweepy.Cursor(api.user_timeline, screen_name = user_name, max_id = min_id - 1, count= max_count, exclude_replies = True).items())
+							elif (not reverse) and max_id > 0:
+								update_max = True
+								tweets = list(tweepy.Cursor(api.user_timeline, screen_name = user_name, since_id = max_id, count= max_count, exclude_replies = True).items())
+							else:
+								update_max = True
+								tweets = list(tweepy.Cursor(api.user_timeline, screen_name = user_name, count= max_count, exclude_replies = True).items())
 
-							if len(tweets) > 0:
-								if push_to_discord:
-									query_result = self.query_twitter_info(user_id, guild_id, category)
-									self.db["twitter_info"].update_one(query_result, {"$set": {
-										"%s.%s.min_id" % (category, user_name): tweets[-1].id-1,
-										"%s.%s.max_id" % (category, user_name): tweets[-1].id-1}})
-								elif sync_to_telegram:
-									query_result = self.query_twitter_info(user_id, guild_id, category)
-									self.db["twitter_info"].update_one(query_result, {"$set": {
-										"%s.%s.min_sync_id" % (category, user_name): tweets[-1].id-1,
-										"%s.%s.max_sync_id" % (category, user_name): tweets[-1].id-1}})
+								if len(tweets) > 0:
+									if push_to_discord:
+										query_result = self.query_twitter_info(user_id, guild_id, category)
+										self.db["twitter_info"].update_one(query_result, {"$set": {
+											"%s.%s.min_id" % (category, user_name): tweets[-1].id-1,
+											"%s.%s.max_id" % (category, user_name): tweets[-1].id-1}})
+									elif sync_to_telegram:
+										query_result = self.query_twitter_info(user_id, guild_id, category)
+										self.db["twitter_info"].update_one(query_result, {"$set": {
+											"%s.%s.min_sync_id" % (category, user_name): tweets[-1].id-1,
+											"%s.%s.max_sync_id" % (category, user_name): tweets[-1].id-1}})
+						except tweepy.errors.NotFound:
+							await self.remove_by_link(user_id, guild_id, category, user_name)
+							continue
+							
 
 						if len(tweets) == 0: 
 							logging.info("Nothing fetched, continue.")
@@ -774,42 +806,47 @@ class Twitter(commands.Cog):
 					# print(query_result[category])
 					for user_name, sync_info in query_result[category].items():
 						await asyncio.sleep(15)	
-						logging.info("Acquiring like statuses %s..." % user_name)
-						if push_to_discord:
-							max_id, min_id = sync_info["max_id"], sync_info["min_id"]
+						try:
+							logging.info("Acquiring like statuses %s..." % user_name)
+							if push_to_discord:
+								max_id, min_id = sync_info["max_id"], sync_info["min_id"]
 
-						elif sync_to_telegram:
-							max_id, min_id = sync_info["max_sync_id"], sync_info["min_sync_id"]
-						
-						max_count = MAX_DISCORD_COUNT if push_to_discord else MAX_TELEGRAM_COUNT
+							elif sync_to_telegram:
+								max_id, min_id = sync_info["max_sync_id"], sync_info["min_sync_id"]
+							
+							max_count = MAX_DISCORD_COUNT if push_to_discord else MAX_TELEGRAM_COUNT
 
-						# if reverse and min_id > 0:
-						# 	update_min = True
-						# 	tweets = list(tweepy.Cursor(api.get_favorites, screen_name = user_name, count= max_count).items())
-						if (not reverse) and max_id > 0:
-							update_max = True
-							tweets = list(tweepy.Cursor(api.get_favorites, screen_name = user_name, count= max_count).items(MAX_LIKE_QUERY_COUNT))
-							id_list = [tweet.id for tweet in tweets]
-							if max_id in id_list:
-								tweets = tweets[:id_list.index(max_id)]
-							# else:
+							# if reverse and min_id > 0:
+							# 	update_min = True
 							# 	tweets = list(tweepy.Cursor(api.get_favorites, screen_name = user_name, count= max_count).items())
-							# 	id_list = [tweet.id for tweet in tweets]
-							# 	if max_id in id_list:
-							# 		tweets = tweets[:id_list.index(max_id)]
-						else:
-							update_max = True
-							tweets = list(tweepy.Cursor(api.get_favorites, screen_name = user_name, count= max_count).items())
+							if (not reverse) and max_id > 0:
+								update_max = True
+								tweets = list(tweepy.Cursor(api.get_favorites, screen_name = user_name, count= max_count).items(MAX_LIKE_QUERY_COUNT))
+								id_list = [tweet.id for tweet in tweets]
+								if max_id in id_list:
+									tweets = tweets[:id_list.index(max_id)]
+								# else:
+								# 	tweets = list(tweepy.Cursor(api.get_favorites, screen_name = user_name, count= max_count).items())
+								# 	id_list = [tweet.id for tweet in tweets]
+								# 	if max_id in id_list:
+								# 		tweets = tweets[:id_list.index(max_id)]
+							else:
+								update_max = True
+								tweets = list(tweepy.Cursor(api.get_favorites, screen_name = user_name, count= max_count).items())
 
-							if len(tweets) > 0:
-								if push_to_discord:
-									query_result = self.query_twitter_info(user_id, guild_id, category)
-									self.db["twitter_info"].update_one(query_result, {"$set": {
-										"%s.%s.min_id" % (category, user_name): tweets[-1].id}})
-								elif sync_to_telegram:
-									query_result = self.query_twitter_info(user_id, guild_id, category)
-									self.db["twitter_info"].update_one(query_result, {"$set": {
-										"%s.%s.min_sync_id" % (category, user_name): tweets[-1].id}})
+								if len(tweets) > 0:
+									if push_to_discord:
+										query_result = self.query_twitter_info(user_id, guild_id, category)
+										self.db["twitter_info"].update_one(query_result, {"$set": {
+											"%s.%s.min_id" % (category, user_name): tweets[-1].id}})
+									elif sync_to_telegram:
+										query_result = self.query_twitter_info(user_id, guild_id, category)
+										self.db["twitter_info"].update_one(query_result, {"$set": {
+											"%s.%s.min_sync_id" % (category, user_name): tweets[-1].id}})
+
+						except tweepy.errors.NotFound:
+							await self.remove_by_link(user_id, guild_id, category, user_name)
+							continue
 
 						if len(tweets) == 0: 
 							logging.info("Nothing fetched, continue.")
@@ -884,7 +921,7 @@ class Twitter(commands.Cog):
 		author, guild = ctx.message.author, ctx.guild
 		user_id, guild_id = str(author.id), str(guild.id)
 
-		logging.info("Adding to %s tracking..." % sync_type)
+		logging.info("Remove to %s tracking..." % sync_type)
 
 		match sync_type:
 			case "like_info":
@@ -907,7 +944,7 @@ class Twitter(commands.Cog):
   
 	async def remove_by_link(self, user_id: str, guild_id: str, type_name: str, keyword: str):
 		"""
-		Add binding info into the database
+		Remove binding info into the database
 
 		:param user_id: id of the user
 		:param guild_id: id of the guild
@@ -1070,6 +1107,11 @@ class Twitter(commands.Cog):
 		except:
 			return await ctx.send("Invalid argument.")
 		
+		try:
+			await ctx.message.delete()
+		except:
+			pass
+
 		sync_ctgs = [ctg for i, ctg in enumerate(self.CATEGORIES) if value & 1 << i]
 		for ctg in sync_ctgs:
 			await self.enable_sync(ctx, ctg, "telegram")
@@ -1082,7 +1124,12 @@ class Twitter(commands.Cog):
 			if value <= 0 or value >= 2**5: raise ValueError
 		except:
 			return await ctx.send("Invalid argument.")
-		
+
+		try:
+			await ctx.message.delete()
+		except:
+			pass
+
 		sync_ctgs = [ctg for i, ctg in enumerate(self.CATEGORIES) if value & 1 << i]
 		asyncio.gather(*[self.enable_sync(ctx, ctg, "discord") for ctg in sync_ctgs])
 		if sync_ctgs and (not self.sync.is_running()):
@@ -1096,6 +1143,7 @@ class Twitter(commands.Cog):
 	async def enable_sync(self, ctx: commands.Context, sync_type: str, target: str, target_channel: str = ""):
 		author, guild = ctx.message.author, ctx.guild
 		user_id, guild_id = str(author.id), str(guild.id)
+
 
 		if target == "telegram":
 			if not self.bot.get_cog("TelegramBot").get_telegram_channel(user_id, guild_id, target_channel):
