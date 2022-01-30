@@ -420,8 +420,7 @@ class Voice(commands.Cog):
 
 
 	def in_same_discord_channel(self, author_voice_state: discord.VoiceState, bot_voice_client: discord.VoiceClient)-> bool:
-
-		return author_voice_state.channel and bot_voice_client and author_voice_state.channel == bot_voice_client.channel
+		return author_voice_state.channel and bot_voice_client and author_voice_state.channel.id == bot_voice_client.channel.id
 
 
 
