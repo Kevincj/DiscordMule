@@ -10,6 +10,7 @@ import asyncio
 import discord
 import logging
 import pymongo
+import random
 import configparser
 from discord.ext import tasks
 from discord.ext import commands
@@ -833,33 +834,23 @@ class Twitter(commands.Cog):
 							
 							max_count = MAX_DISCORD_COUNT if push_to_discord else MAX_TELEGRAM_COUNT
 
-							# if reverse and min_id > 0:
-							# 	update_min = True
-							# 	tweets = list(tweepy.Cursor(api.get_favorites, screen_name = user_name, count= max_count).items())
-							if (not reverse) and max_id > 0:
-								update_max = True
-								tweets = list(tweepy.Cursor(api.get_favorites, screen_name = user_name, count= max_count).items(MAX_LIKE_QUERY_COUNT))
-								id_list = [tweet.id for tweet in tweets]
-								if max_id in id_list:
-									tweets = tweets[:id_list.index(max_id)]
+							if random.random() < 0.1:
+								tweets = list(tweepy.Cursor(api.get_favorites, screen_name = user_name, count= max_count).items())
+
+							elif (not reverse) and max_id > 0:
+								# update_max = True
+								tweets = list(tweepy.Cursor(api.get_favorites, screen_name = user_name, count= max_count).items
+								# if max_id in id_list:
+								# 	tweets = tweets[:id_list.index(max_id)]
 								# else:
-								# 	tweets = list(tweepy.Cursor(api.get_favorites, screen_name = user_name, count= max_count).items())
+								# 	tweets = list(tweepy.Cursor(api.get_favorites, count= max_count).items())
 								# 	id_list = [tweet.id for tweet in tweets]
 								# 	if max_id in id_list:
 								# 		tweets = tweets[:id_list.index(max_id)]
 							else:
-								update_max = True
+								# update_max = True
 								tweets = list(tweepy.Cursor(api.get_favorites, screen_name = user_name, count= max_count).items())
-
-								if len(tweets) > 0:
-									if push_to_discord:
-										query_result = self.query_twitter_info(user_id, guild_id, category)
-										self.db["twitter_info"].update_one(query_result, {"$set": {
-											"%s.%s.min_id" % (category, user_name): tweets[-1].id}})
-									elif sync_to_telegram:
-										query_result = self.query_twitter_info(user_id, guild_id, category)
-										self.db["twitter_info"].update_one(query_result, {"$set": {
-											"%s.%s.min_sync_id" % (category, user_name): tweets[-1].id}})
+							
 
 						except tweepy.errors.NotFound:
 							await self.remove_by_link(user_id, guild_id, category, user_name)
@@ -893,30 +884,32 @@ class Twitter(commands.Cog):
 					# if reverse and min_id > 0:
 					# 	update_min = True
 					# 	tweets = list(tweepy.Cursor(api.get_favorites, count= max_count).items(MAX_LIKE_QUERY_COUNT))
-					if (not reverse) and max_id > 0:
-						update_max = True
-						tweets = list(tweepy.Cursor(api.get_favorites, count= max_count).items(MAX_LIKE_QUERY_COUNT))
-						id_list = [tweet.id for tweet in tweets]
-						if max_id in id_list:
-							tweets = tweets[:id_list.index(max_id)]
-						else:
-							tweets = list(tweepy.Cursor(api.get_favorites, count= max_count).items())
-							id_list = [tweet.id for tweet in tweets]
-							if max_id in id_list:
-								tweets = tweets[:id_list.index(max_id)]
-					else:
-						update_max = True
+					if random.random() < 0.1:
 						tweets = list(tweepy.Cursor(api.get_favorites, count= max_count).items())
 
-						if len(tweets) > 0:
-							if push_to_discord:
-								query_result = self.query_twitter_info(user_id, guild_id, category)
-								self.db["twitter_info"].update_one(query_result, {"$set": {
-									"%s.min_id" % category: tweets[-1].id}})
-							elif sync_to_telegram:
-								query_result = self.query_twitter_info(user_id, guild_id, category)
-								self.db["twitter_info"].update_one(query_result, {"$set": {
-									"%s.min_sync_id" % category: tweets[-1].id}})
+					elif (not reverse) and max_id > 0:
+						# update_max = True
+						tweets = list(tweepy.Cursor(api.get_favorites, count= max_count).items(MAX_LIKE_QUERY_COUNT))
+						# if max_id in id_list:
+						# 	tweets = tweets[:id_list.index(max_id)]
+						# else:
+						# 	tweets = list(tweepy.Cursor(api.get_favorites, count= max_count).items())
+						# 	id_list = [tweet.id for tweet in tweets]
+						# 	if max_id in id_list:
+						# 		tweets = tweets[:id_list.index(max_id)]
+					else:
+						# update_max = True
+						tweets = list(tweepy.Cursor(api.get_favorites, count= max_count).items())
+
+						# if len(tweets) > 0:
+						# 	if push_to_discord:
+						# 		query_result = self.query_twitter_info(user_id, guild_id, category)
+						# 		self.db["twitter_info"].update_one(query_result, {"$set": {
+						# 			"%s.min_id" % category: tweets[-1].id}})
+						# 	elif sync_to_telegram:
+						# 		query_result = self.query_twitter_info(user_id, guild_id, category)
+						# 		self.db["twitter_info"].update_one(query_result, {"$set": {
+						# 			"%s.min_sync_id" % category: tweets[-1].id}})
 
 					if len(tweets) == 0: 
 						logging.info("Nothing fetched, continue.")
@@ -1172,6 +1165,9 @@ class Twitter(commands.Cog):
 			self.sync_status[(user_id, guild_id)][sync_type][target] = True
 		else:
 			self.sync_status[(user_id, guild_id)][sync_type][target] = ctx
+
+		if not self.sync.is_running():
+			self.sync.start()
 
 
 	@commands.command(pass_context=True)
