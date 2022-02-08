@@ -839,7 +839,7 @@ class Twitter(commands.Cog):
 
 							elif (not reverse) and max_id > 0:
 								# update_max = True
-								tweets = list(tweepy.Cursor(api.get_favorites, screen_name = user_name, count= max_count).items
+								tweets = list(tweepy.Cursor(api.get_favorites, screen_name = user_name, count= max_count).items(MAX_LIKE_QUERY_COUNT))
 								# if max_id in id_list:
 								# 	tweets = tweets[:id_list.index(max_id)]
 								# else:
