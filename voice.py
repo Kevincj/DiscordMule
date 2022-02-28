@@ -14,6 +14,7 @@ import datetime
 import functools
 import youtube_dl
 import configparser
+from gtts import gTTS
 import discord.utils as utils
 from discord.ext import commands
 from youtube_dl import YoutubeDL
@@ -49,6 +50,8 @@ class Voice(commands.Cog):
 		self.load_tts()
 		self.load_ydl()
 		self.load_spotify()
+
+		self.connected_channels = set()
 
 
 		
@@ -133,8 +136,70 @@ class Voice(commands.Cog):
 
 		else:
 			await ctx.send("I'm not in any voice channel of this server.")
+		
 
 
+	@commands.command(pass_context=True, help="TTS from bot")
+	async def say(self, ctx: commands.Context = None, *, message :str):
+		logging.info("Received -say request from %s: %s" % (ctx.author, message))
+
+		if not ctx.author.voice:
+			return await ctx.send("Please join a voice channel before running this command.")
+
+		voice_client = utils.get(ctx.bot.voice_clients, guild = ctx.guild)
+
+		if not self.in_same_discord_channel(ctx.author.voice, ctx.voice_client):
+			return await ctx.send("I'm not in your voice channel.")
+
+		gTTS(message, lang="zh").save("tts.mp3")
+		return voice_client.play(FFmpegPCMAudio("tts.mp3"))
+
+	@commands.Cog.listener() 
+	async def on_voice_state_update(self, member, before, after):
+		if before.channel == after.channel: return
+		if member.id == self.bot.user.id:
+			try:
+				if before.channel:
+					self.connected_channels.remove(before.channel.id)
+				if after.channel:
+					self.connected_channels.add(after.channel.id)
+			except:
+				pass
+			return
+		
+		logging.info(self.connected_channels)
+		if before.channel: logging.info(before.channel.id)
+		if after.channel: logging.info(after.channel.id)
+		if before.channel and (before.channel.id in self.connected_channels):
+			logging.info(self.bot.voice_clients)
+			voice_client = utils.get(self.bot.voice_clients, channel = before.channel)
+			logging.info("vc: %s" % voice_client)
+			if voice_client:
+				logging.info("say")
+				gTTS("%s 离开了频道" % member, lang="zh").save("tts.mp3")
+				voice_client.play(FFmpegPCMAudio("tts.mp3"))
+
+		if after.channel and (after.channel.id in self.connected_channels):
+			logging.info(self.bot.voice_clients)
+			voice_client = utils.get(self.bot.voice_clients, channel = after.channel)
+
+			if voice_client:
+				logging.info("say")
+				gTTS("%s 加入了频道" % member, lang="zh").save("tts.mp3")
+				voice_client.play(FFmpegPCMAudio("tts.mp3"))
+		return
+		logging.info(self.bot.channels)
+		logging.info(member)
+		logging.info(before)
+		logging.info(after)
+
+
+		voice_client = utils.get(guild.voice_channels, guild = after.guild_id)
+		if self.in_same_discord_channel(after.channel, voice_client):
+			if (voice_client.channel != before.channel) and (voice_client.channel == after.channel):
+				print(f'{member} has joined the vc')
+			elif (voice_client.channel == before.channel) and (voice_client.channel != after.channel):
+				print(f'{member} has left the vc')
 
 	# @commands.command(pass_context=True, help="TTS from bot")
 	# async def say(self, ctx: commands.Context, *, arg: str):
